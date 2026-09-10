@@ -1,0 +1,26 @@
+# Shad Wayit — AI QA Lab
+
+React interface for a guided NoiseLabz requirements-to-test portfolio demo.
+
+## Implemented
+
+- Two prepared requirement examples grounded in the supplied PRD.
+- Evidence display, editable scenarios, session-local approval invalidation.
+- Approval-gated download of prepared Playwright Python templates.
+- Honest execution status and actual interface activity log.
+- Feature-detected read-only WebMCP state tool; runtime validation unavailable in this session.
+
+## Not implemented yet
+
+Live LLM generation, automated RAG, backend approval enforcement, Python execution,
+MCP server integration, evaluation results, or a recorded demo video.
+The WebMCP browser tool is not the planned Python MCP server.
+Templates do not automatically incorporate scenario edits and have not been run.
+
+## Development
+
+Use Node 22.13 or newer and npm. Run `npm run install:ci`, then `npm run dev`.
+`npm run build` creates the Sites-compatible build. `npx tsc --noEmit` checks types.
+
+The intended next service is a Python QA backend using pytest and Playwright.
+The supplied private resume and planning documents in outputs/ are excluded from Git.
