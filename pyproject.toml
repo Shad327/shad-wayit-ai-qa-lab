@@ -3,10 +3,11 @@ name = "shad-qa-retrieval"
 version = "0.1.0"
 description = "Traceable local requirements retrieval for the AI QA Lab"
 requires-python = ">=3.10"
-dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "httpx>=0.27,<1"]
 
 [project.optional-dependencies]
 test = ["pytest>=8,<9", "httpx>=0.27,<1"]
+browser = ["pytest-playwright>=0.9,<1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
