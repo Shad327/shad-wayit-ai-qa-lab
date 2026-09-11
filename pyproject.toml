@@ -1,0 +1,13 @@
+[project]
+name = "shad-qa-retrieval"
+version = "0.1.0"
+description = "Traceable local requirements retrieval for the AI QA Lab"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8,<9"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

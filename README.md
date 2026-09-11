@@ -12,6 +12,13 @@ React interface for a guided NoiseLabz requirements-to-test portfolio demo.
 
 ## Not implemented yet
 
+Local Python retrieval is now available in `qa_pipeline/`: it parses Markdown
+requirements and returns lexical matches with source lines and a document hash.
+Run `python -m qa_pipeline --source outputs/requirements.md --query AUTH-04`.
+Install the test extra (`pip install 'pytest>=8,<9'`) and run `python -m pytest`.
+The tests use synthetic inputs and do not require the private PRD. This component
+is not yet connected to the React interface or exposed as an HTTP service.
+
 Live LLM generation, automated RAG, backend approval enforcement, Python execution,
 MCP server integration, evaluation results, or a recorded demo video.
 The WebMCP browser tool is not the planned Python MCP server.
