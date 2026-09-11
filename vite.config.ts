@@ -52,6 +52,13 @@ export default defineConfig(async () => {
 
   return {
     server: {
+      proxy: {
+        "/qa-api": {
+          target: "http://127.0.0.1:8000",
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/qa-api/, ""),
+        },
+      },
       ...(managedLinux ? { host: "0.0.0.0", allowedHosts: ["terminal.local"] } : {}),
       ...(isCodexSeatbeltSandbox ? { watch: { useFsEvents: false, usePolling: true } } : {}),
     },
