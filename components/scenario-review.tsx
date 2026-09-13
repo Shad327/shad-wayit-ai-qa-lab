@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 const schema = z.object({ review: z.object({
   id: z.string(), scenario: z.string(), revision: z.number().int(), approved: z.boolean(),
   approved_at: z.string().nullable(), updated_at: z.string(), mode: z.literal("demo_data"),
+  evidence: z.array(z.object({id:z.string(),text:z.string(),start_line:z.number(),end_line:z.number(),document_sha256:z.string()})).default([]),
+  evidence_stale: z.boolean().optional(),
 }).nullable() });
 type Review = NonNullable<z.infer<typeof schema>["review"]>;
 
@@ -18,15 +20,15 @@ export function ScenarioReview({ identifier, initial, onState, onContinue }: {
   const [busy, setBusy] = useState(true), [ready, setReady] = useState(false), [error, setError] = useState("");
   const callback = useRef(onState); callback.current = onState;
   const dirty = !saved || text !== saved.scenario;
-  async function request(method = "GET", approve = false) {
+  async function request(method = "GET", approve = false, attach = false) {
     setBusy(true); setError("");
     try {
-      const response = await fetch(`/qa-api/reviews/${identifier}${approve ? "/approve" : ""}`, {
+      const response = await fetch(`/qa-api/reviews/${identifier}${attach ? "/from-evidence" : approve ? "/approve" : ""}`, {
         method, headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(10000),
-        ...(method !== "GET" ? { body: JSON.stringify({ revision: saved?.revision ?? 0, ...(!approve ? { scenario: text } : {}) }) } : {}),
+        ...(method !== "GET" ? { body: JSON.stringify({ revision: saved?.revision ?? 0, ...(!approve && !attach ? { scenario: text } : {}) }) } : {}),
       });
       if (!response.ok) throw Error(response.status === 409
-        ? "Another tab changed this review. Copy your unsaved text, then reload the saved review."
+        ? "The review or source changed, or matching evidence is missing. Copy unsaved text, reload the review, then attach current evidence."
         : "Could not access saved reviews. Check that Python is running and try again. Your text is still here.");
       const { review } = schema.parse(await response.json());
       setSaved(review); setReady(true);
@@ -50,6 +52,10 @@ export function ScenarioReview({ identifier, initial, onState, onContinue }: {
   }, [identifier, initial]);
   return <section aria-label="Saved scenario review">
     <p className="panel-description">Demo data · written example, not AI-generated. Edit, save, then approve the saved version.</p>
+    <Button variant="outline" disabled={busy || !ready || (dirty && (!!saved || text !== initial))} onClick={() => request("POST", false, true)}>{saved?.evidence.length ? "Refresh source evidence" : "Attach evidence and save sample"}</Button>
+    <p className="scope-note">Retrieves the real requirement in Python and saves its source snapshot. Existing saved edits are preserved. The initial sample is hand-written, not inferred by a model.</p>
+    {saved?.evidence_stale && <p role="alert" className="callout">Requirements changed. Refresh source evidence and review again before approving.</p>}
+    {saved?.evidence.map(p=><details key={p.id} className="scope-note"><summary>Saved source: {p.id} · lines {p.start_line}–{p.end_line}</summary><blockquote>{p.text}</blockquote><code style={{overflowWrap:"anywhere"}}>{p.document_sha256}</code></details>)}
     <label htmlFor="saved-scenario">Scenario</label>
     <Textarea id="saved-scenario" value={text} maxLength={8000} disabled={busy || !ready}
       onChange={e => { setText(e.target.value); callback.current(e.target.value, false); }} />
@@ -57,7 +63,7 @@ export function ScenarioReview({ identifier, initial, onState, onContinue }: {
     {error && <p role="alert" className="callout">{error}</p>}
     <div className="action-row">
       <Button disabled={busy || !ready || !dirty || !text.trim()} onClick={() => request("PUT")}>Save changes</Button>
-      <Button disabled={busy || !ready || dirty || saved?.approved} onClick={() => request("POST", true)}>Approve saved version</Button>
+      <Button disabled={busy || !ready || dirty || saved?.approved || saved?.evidence_stale} onClick={() => request("POST", true)}>Approve saved version</Button>
       <Button variant="outline" disabled={busy || dirty || !saved?.approved} onClick={onContinue}>View template</Button>
     </div>
     <Button variant="ghost" disabled={busy} onClick={() => request()}>Reload saved review (replaces unsaved text)</Button>

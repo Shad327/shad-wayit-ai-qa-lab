@@ -16,6 +16,7 @@ def test_review_survives_reload_and_edit_clears_approval(page, isolated_review_a
     page.get_by_role("button", name="Save changes", exact=True).click()
     approve = page.get_by_role("button", name="Approve saved version", exact=True)
     expect(approve).to_be_enabled()
+
     approve.click()
     expect(page.get_by_role("status")).to_contain_text("Version 1 approved")
     page.reload()
@@ -27,3 +28,23 @@ def test_review_survives_reload_and_edit_clears_approval(page, isolated_review_a
     page.get_by_role("button", name="Save changes", exact=True).click()
     expect(page.get_by_role("status")).to_contain_text("Version 2 saved · awaiting review")
     expect(approve).to_be_enabled()
+
+
+def test_attach_real_evidence_to_sample_and_reload(page, isolated_review_api):
+    def proxy(route):
+        path = route.request.url.split("/qa-api/", 1)[1]
+        route.fulfill(response=route.fetch(url=f"{isolated_review_api}/{path}"))
+    page.route("**/qa-api/**", proxy)
+    page.goto("http://localhost:5173/")
+    page.get_by_role("button", name="03Review").click()
+    page.get_by_role("button", name="Attach evidence and save sample").click()
+    source = page.locator("summary").filter(has_text="Saved source: AUTH-04")
+    expect(source).to_be_visible()
+    source.click()
+    expect(page.get_by_role("blockquote")).to_contain_text("AUTH-04")
+    page.get_by_role("button", name="Approve saved version").click()
+    expect(page.get_by_role("status")).to_contain_text("Version 1 approved")
+    page.reload()
+    page.get_by_role("button", name="03Review").click()
+    expect(source).to_be_visible()
+    expect(page.get_by_role("status")).to_contain_text("Version 1 approved")
