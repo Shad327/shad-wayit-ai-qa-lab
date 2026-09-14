@@ -101,10 +101,18 @@ class RunManager:
             self.worker.start()
         return self.get(identifier)
 
+    report_prefix = "browser-noiselabz"
+
+    def browser_output(self, artifact):
+        return artifact
+
+    def test_arguments(self, artifact):
+        return ["browser_tests/test_noiselabz.py"]
+
     def execute(self, identifier):
         process = None
         state, code, note = "error", None, "Runner could not start; check local browser installation."
-        report = f"browser-noiselabz-{identifier}.xml"
+        report = f"{self.report_prefix}-{identifier}.xml"
         artifact = self.root / "outputs" / report.removesuffix(".xml")
         try:
             if self.get(identifier)["plan_hash"] != self.plan()["hash"]:
@@ -112,9 +120,9 @@ class RunManager:
             with self.connection() as db:
                 db.execute("UPDATE runs SET state='running', started_at=? WHERE id=?", (now(), identifier))
             artifact.mkdir(parents=True, exist_ok=False)
-            command = [sys.executable, "-m", "pytest", "browser_tests/test_noiselabz.py", "-q",
+            command = [sys.executable, "-m", "pytest", *self.test_arguments(artifact), "-q",
                        "--browser", "chromium", "--screenshot", "on", "--tracing", "on",
-                       "--output", str(artifact), "--junitxml", str(artifact.with_suffix(".xml"))]
+                       "--output", str(self.browser_output(artifact)), "--junitxml", str(artifact.with_suffix(".xml"))]
             env = {k: os.environ[k] for k in ("HOME", "PATH", "TMPDIR", "LANG", "PLAYWRIGHT_BROWSERS_PATH") if k in os.environ}
             with artifact.with_suffix(".log").open("w") as log:
                 with self.process_lock:
@@ -127,7 +135,7 @@ class RunManager:
             note = "Inspect report assertions; a failure can reflect product, test, or environment behavior."
         except subprocess.TimeoutExpired:
             state, note = "timed_out", "Run exceeded 180 seconds and was stopped."
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError, HTTPException):
             pass
         finally:
             if process is not None and process.poll() is None:

@@ -2,11 +2,12 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import {GeneratedHistory} from "@/components/generated-history";
 import { RunSuite } from "@/components/run-suite";
 const schema = z.object({mode: z.literal("actual_pytest_reports"), reports: z.array(z.object({
   file: z.string(), timestamp: z.string(), tests: z.array(z.object({
     name: z.string(), status: z.enum(["passed", "failed", "skipped"]),
-    case_id: z.string().nullable(), title: z.string(), screenshot: z.string().nullable(),
+    case_id: z.string().nullable(), title: z.string(), screenshot: z.string().nullable(), trace: z.string().nullable().optional(),
   })),
 }))});
 export function BrowserResults() {
@@ -31,6 +32,7 @@ export function BrowserResults() {
   return <section aria-label="NoiseLabz quality demo">
     <p className="eyebrow">NOISELABZ / PUBLIC UI REGRESSION</p>
     <p className="panel-description">Real Chromium runs against the public website. Each check has a case ID, a result, and captured evidence.</p>
+    <GeneratedHistory/>
     <RunSuite onComplete={()=>setRefresh(v=>v+1)}/>
     <Button variant="outline" disabled={busy} onClick={() => setRefresh(v => v + 1)}>{busy ? "Loading…" : "Refresh results"}</Button>
     {error && <p role="alert" className="callout">{error} {result && "Previously loaded results remain below."}</p>}
@@ -41,14 +43,18 @@ export function BrowserResults() {
         <div><strong className="failure-text">{cases.filter(t=>t.status === "failed").length}</strong><span>failed</span></div>
       </div>
       <p className="scope-note">Recorded {new Date(latest.timestamp).toLocaleString()} · Chromium · desktop and 390 × 844 mobile viewport</p>
+      <p><a href={`/qa-api/browser-reports/${latest.file}`}>Download this run’s report</a></p>
       <div className="test-case-list">{cases.map(test => <details key={test.name} className="test-case">
         <summary><span className="case-id">{test.case_id}</span><span>{test.title}</span><strong className={`test-status ${test.status}`}>{test.status}</strong></summary>
+        <p>{test.screenshot&&<a href={test.screenshot} target="_blank" rel="noreferrer">View screenshot</a>} {test.trace?<a href={test.trace}>Download trace</a>:<span> · Trace not recorded for this test.</span>}</p>
         <p className="scope-note">Python test: <code>{test.name}</code></p>
         {test.screenshot ? <figure><a href={test.screenshot} target="_blank" rel="noreferrer"><img src={test.screenshot} alt={`${test.case_id}: browser captured at end of ${test.status} test`} loading="lazy" /></a><figcaption>Actual run capture. Click to view full size. Assertions establish keyboard behavior; this screenshot alone does not.</figcaption></figure> : <p>No screenshot associated with this report.</p>}
       </details>)}</div>
       {keyboard?.status === "failed" && <article className="finding-card" aria-label="Keyboard accessibility finding">
         <p className="eyebrow">FINDING / NOISE-UI-001 · KEY-02</p>
         <h4>Visible menu. Missing keyboard access.</h4>
+        {keyboard.screenshot?<figure><a href={keyboard.screenshot} target="_blank" rel="noreferrer">View KEY-02 screenshot<img src={keyboard.screenshot} alt="KEY-02 failure screenshot: mobile menu keyboard test" loading="lazy" style={{width:"100%",maxWidth:390,display:"block",marginTop:12}}/></a><figcaption>Actual captured browser state. The screenshot alone does not establish keyboard behavior.</figcaption></figure>:<p>Screenshot unavailable for this recorded KEY-02 result.</p>}
+        <p><a href={`/qa-api/browser-reports/${latest.file}`}>Download KEY-02 run report</a> · {keyboard.trace?<a href={keyboard.trace}>Download KEY-02 trace</a>:<span>Trace unavailable for this recorded result.</span>}</p>
         <p>The mobile menu trigger did not receive focus during 20 Tab presses. The separate click test checks pointer access.</p>
         <dl><dt>Reproduce</dt><dd>Open NoiseLabz in a fresh browser at 390 × 844. Press Tab to navigate toward the menu icon.</dd><dt>Expected</dt><dd>The menu trigger receives keyboard focus and can be activated.</dd><dt>Investigate</dt><dd>The inspected trigger was a clickable div. Use a named native button and verify focus, Enter/Space activation, and menu state.</dd></dl>
         <p className="scope-note">Normal-priority recommendation, subject to product triage. No fix has been applied to NoiseLabz. Review the assertion if the site or test changes.</p>

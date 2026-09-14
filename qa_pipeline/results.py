@@ -20,14 +20,14 @@ def case_description(name):
     return None, name
 
 
-def screenshot_for(directory, report, case):
+def screenshot_for(directory, report, case, filenames=("test-failed-1.png", "test-finished-1.png")):
     # Match pytest-playwright's ASCII artifact naming for this suite exactly.
     classname = case.get("classname", "")
     if classname != "browser_tests.test_noiselabz":
         return None
     slug = re.sub(r"[^a-z0-9]+", "-", f"browser_tests/test_noiselabz.py::{case.get('name', '')}".lower()).strip("-")
     folder = directory / report.stem / slug
-    for filename in ("test-failed-1.png", "test-finished-1.png"):
+    for filename in filenames:
         path = folder / filename
         if path.is_file() and path.resolve().is_relative_to(directory.resolve()):
             return f"/qa-api/browser-artifacts/{report.stem}/{slug}/{filename}"
@@ -54,7 +54,7 @@ def browser_reports(directory: Path):
                 name = case.get("name", "Unnamed test")
                 identifier, title = case_description(name) if case.get("classname") == "browser_tests.test_noiselabz" else (None, name)
                 cases.append({"name": name, "status": status, "case_id": identifier,
-                              "title": title, "screenshot": screenshot_for(directory, path, case)})
+                              "title": title, "screenshot": screenshot_for(directory, path, case), "trace": screenshot_for(directory, path, case, ("trace.zip",))})
             reports.append({"file": path.name, "timestamp": suite.get("timestamp", ""), "tests": cases})
         except (ElementTree.ParseError, OSError):
             continue
