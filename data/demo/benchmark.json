@@ -1,0 +1,46 @@
+{
+  "version": "guardrails-v1",
+  "mode": "synthetic_fixtures",
+  "model_called": false,
+  "matched": 6,
+  "total": 6,
+  "cases": [
+    {
+      "name": "valid_structure",
+      "expected": "needs_human_review",
+      "actual": "needs_human_review",
+      "matched": true
+    },
+    {
+      "name": "unknown_citation",
+      "expected": "blocked",
+      "actual": "blocked",
+      "matched": true
+    },
+    {
+      "name": "empty_steps",
+      "expected": "blocked",
+      "actual": "blocked",
+      "matched": true
+    },
+    {
+      "name": "duplicate",
+      "expected": "blocked",
+      "actual": "blocked",
+      "matched": true
+    },
+    {
+      "name": "unsupported_semantic_claim",
+      "expected": "needs_human_review",
+      "actual": "needs_human_review",
+      "matched": true
+    },
+    {
+      "name": "open_question",
+      "expected": "needs_human_review",
+      "actual": "needs_human_review",
+      "matched": true
+    }
+  ],
+  "limitation": "Matching fixture expectations is not model accuracy. The invented semantic claim intentionally requires human review; these checks cannot detect every hallucination."
+}

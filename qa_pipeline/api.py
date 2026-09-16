@@ -100,6 +100,37 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
 
     generated_runs = GeneratedRunManager(root, reviews.path.parent / "generated-runs.sqlite3", export_current)
 
+    @api.get("/evaluations/benchmark")
+    def guardrail_benchmark():
+        from .benchmark import run_benchmark
+        return run_benchmark()
+
+    @api.post("/workflows/demo")
+    def demo_workflow():
+        from .workflow import run_workflow
+        return run_workflow(source, reviews.path.parent / "workflows")
+
+    @api.get("/workflows/{identifier}")
+    def workflow_status(identifier: UUID):
+        from .workflow import read_workflow
+        try:
+            return read_workflow(reviews.path.parent / "workflows", identifier)
+        except FileNotFoundError:
+            raise HTTPException(404, "Workflow not found")
+
+    @api.post("/workflows/{identifier}/adopt")
+    def adopt_workflow(identifier: UUID, request: ReviewRevision):
+        workflow = workflow_status(identifier)
+        if workflow["status"] != "awaiting_human_review":
+            raise HTTPException(409, "Only completed draft workflows can be imported")
+        evidence = workflow["packet"]["evidence"]["results"]
+        if any(p["document_sha256"] != source_hash() for p in evidence):
+            raise HTTPException(409, "Source changed since workflow; run it again")
+        provenance = {"model_called":workflow["mode"] == "live_model", "origin":workflow["mode"],
+                      "workflow_id":workflow["id"], "model_roles":workflow.get("model_provenance",[])}
+        structured.save("AUTH-04", request.revision, workflow["draft"], workflow["packet"], provenance=provenance)
+        return get_structured("AUTH-04")
+
     @api.get("/generated-runs")
     def generated_history():
         return {"runs": generated_runs.history()}

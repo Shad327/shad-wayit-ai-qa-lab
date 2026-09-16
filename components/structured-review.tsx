@@ -7,7 +7,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
 const draftSchema=z.object({scenarios:z.array(z.object({title:z.string(),preconditions:z.array(z.string()),steps:z.array(z.object({action:z.string(),expected_result:z.string()})),source_ids:z.array(z.string())})),questions:z.array(z.string())});
-const responseSchema=z.object({review:z.object({revision:z.number(),approved:z.boolean(),evidence_stale:z.boolean(),mode:z.literal("demo_data"),draft:draftSchema,evidence:z.array(z.object({id:z.string(),text:z.string(),start_line:z.number(),end_line:z.number()}))}).nullable()});
+const responseSchema=z.object({review:z.object({revision:z.number(),approved:z.boolean(),evidence_stale:z.boolean(),mode:z.enum(["demo_data","model_generated"]),draft:draftSchema,evidence:z.array(z.object({id:z.string(),text:z.string(),start_line:z.number(),end_line:z.number()}))}).nullable()});
 type Draft=z.infer<typeof draftSchema>;
 type Review=z.infer<typeof responseSchema>["review"];
 export function StructuredReview({identifier}:{identifier:string}){
@@ -39,7 +39,7 @@ export function StructuredReview({identifier}:{identifier:string}){
  const url=URL.createObjectURL(new Blob([body.code],{type:"text/x-python"}));const link=document.createElement("a");link.href=url;link.download="test_approved_guest_features.py";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  }catch(e){setPreview(null);setError(e instanceof Error?e.message:"Download failed");}finally{setBusy(false);}}
  function change(edit:(d:Draft)=>void){if(!draft)return;setPreview(null);const copy=structuredClone(draft);edit(copy);setDraft(copy);}
- return <section aria-label="Structured scenario review"><p className="panel-description">Sample data · hand-written, not AI-generated. Review test steps, expected results, and source references in the format the model will use.</p>
+ return <section aria-label="Structured scenario review"><p className="panel-description">{saved?.mode==="model_generated"?"Model-origin draft with possible human edits. Review every assertion against the evidence.":"Sample data · hand-written, not AI-generated. Review test steps, expected results, and source references in the format the model will use."}</p>
  {!saved&&<Button disabled={busy} onClick={()=>send("sample")}>Create structured sample</Button>}
  {draft&&<><fieldset disabled={busy} style={{border:0,padding:0}}>{draft.scenarios.map((scenario,i)=><article key={i} className="callout">
  <label>Test title<Input value={scenario.title} maxLength={2000} onChange={e=>change(d=>{d.scenarios[i].title=e.target.value;})}/></label>
