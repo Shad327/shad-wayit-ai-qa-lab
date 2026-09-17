@@ -63,3 +63,12 @@ In Review, run the fixture workflow (zero model calls), inspect its stage log, a
 ```
 
 Live coordinator mode requires local model configuration plus `--live --confirm-live`, permits at most two provider requests, and never runs generated tests automatically. Import a completed workflow by its printed ID. Never paste provider keys into the browser or chat. The latest release checklist is kept privately under outputs.
+
+See [Live model acceptance](docs/LIVE_MODEL_ACCEPTANCE.md) for the remaining
+provider setup, review criteria, and employer-sharing choices. The recorded
+showcase release checks cover phone and desktop layouts, video playback,
+downloadable evidence, and all showcase sections:
+
+```sh
+.venv/bin/python -m pytest browser_tests/test_release_showcase.py --browser chromium -q
+```

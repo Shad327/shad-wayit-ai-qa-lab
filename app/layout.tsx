@@ -4,9 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Shad Wayit | AI QA Lab",
   description: "Explore a guided requirements-to-test workflow with Shad Wayit. Python, Playwright, and AI quality engineering.",
-  other: {
-    "codex-preview": "development",
-  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
