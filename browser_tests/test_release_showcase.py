@@ -15,10 +15,14 @@ def test_showcase_media_downloads_and_sections(page, width, tmp_path):
     video = page.get_by_label("Recorded local QA workflow")
     expect(video).to_have_js_property("readyState", 4, timeout=15000)
     duration = video.evaluate("video => video.duration")
-    assert math.isfinite(duration) and duration > 0
+    assert math.isfinite(duration) and duration >= 40
+    expect(video).to_have_js_property("videoWidth", 1920)
+    expect(video).to_have_js_property("videoHeight", 1080)
     video.evaluate("video => { video.muted = true; return video.play(); }")
     page.wait_for_function("document.querySelector('video').currentTime > 0")
     video.evaluate("video => video.pause()")
+    video.evaluate("video => { video.currentTime = 20; }")
+    page.wait_for_function("!document.querySelector('video').seeking")
 
     for section in ["Walkthrough", "Evidence", "Architecture", "Limits"]:
         page.get_by_role("button", name=section, exact=True).click()
