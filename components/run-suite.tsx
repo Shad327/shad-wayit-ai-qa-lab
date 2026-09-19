@@ -56,7 +56,7 @@ export function RunSuite({onComplete,generated}:{onComplete:()=>void;generated?:
     {plan&&<><p className="scope-note">{plan.case_ids.join(" · ")} · Chromium · maximum {plan.timeout_seconds} seconds</p>
       <label style={{display:"flex",gap:10,alignItems:"flex-start",marginTop:16}}><input type="checkbox" checked={approved} disabled={busy||active(run)} onChange={e=>setApproved(e.target.checked)}/><span>{generated?"I reviewed this generated code and approve its public UI check.":"I reviewed and approve these fixed public UI checks."}</span></label></>}
     <div className="action-row"><Button disabled={!plan||!approved||busy||active(run)} onClick={start}>{busy?"Starting…":active(run)?"Run in progress":generated?"Run approved generated test":"Run approved suite"}</Button><Button variant="outline" disabled={busy||active(run)} onClick={()=>setReload(v=>v+1)}>Reload run plan</Button></div>
-    {run&&<p role="status">{generated&&run.plan_hash!==plan?.hash?"Previous plan run status: ":"Run status: "}<strong>{run.state.replaceAll("_"," ")}</strong>{run.finished_at?` · ${new Date(run.finished_at).toLocaleString()}`:""}</p>}
+    {run&&<p role="status">{generated&&run.plan_hash!==plan?.hash?"Previous plan run status: ":"Run status: "}<strong className="run-state" data-state={run.state}>{run.state.replaceAll("_"," ")}</strong>{run.finished_at?` · ${new Date(run.finished_at).toLocaleString()}`:""}</p>}
     {generated&&run?.report&&<a href={`/qa-api${base}/${run.id}/report`}>Download generated-run report (if available)</a>}
     {generated&&run?.finished_at&&<GeneratedEvidence runId={run.id}/>}
     {run?.note&&<p className="scope-note">{run.note}</p>}

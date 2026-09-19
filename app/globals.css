@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
+.run-state{display:inline-block;padding:2px 8px;border:1px solid currentColor;border-radius:4px;color:#93c5fd;background:#172b43;text-transform:capitalize}
+.run-state[data-state="passed"]{color:#86efac;background:#163528}
+.run-state[data-state="failed"],.run-state[data-state="error"],.run-state[data-state="timed_out"]{color:#fca5a5;background:#451f27}
+.run-state[data-state="interrupted"]{color:#fcd34d;background:#3b3019}
 .showcase-controls{padding:0 24px;margin-top:8px!important}
 .showcase-content{padding:32px 24px;overflow-wrap:anywhere}
 .showcase-content ol{list-style:decimal;padding-left:24px;margin:20px 0}

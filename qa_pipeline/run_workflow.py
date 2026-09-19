@@ -22,6 +22,8 @@ def main():
         except BlockingIOError: parser.error('Another model command is active; no calls made')
         result=run_workflow(Path(os.environ.get('QA_REQUIREMENTS_PATH',output/'requirements.md')),output/'workflows',live=args.live)
     print(f"Workflow {result['id']}: {result['status']} ({result['mode']}); requests attempted: {result['model_calls']}")
+    if result['status'] == 'failed':
+        print(result['events'][-1]['detail'])
     print('Open the local workflow panel and load this ID to inspect or import it.')
     raise SystemExit(1 if result['status']=='failed' else 0)
 

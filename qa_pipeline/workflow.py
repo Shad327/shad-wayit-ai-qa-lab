@@ -10,7 +10,7 @@ from uuid import uuid4, UUID
 
 from .generation import prepare_generation, validate_draft
 from .evaluation import evaluate
-from .model import generate
+from .model import generate, GenerationError
 from .retrieval import load_document
 
 
@@ -54,9 +54,10 @@ def run_workflow(source, output, *, live=False, provider=generate):
         record['status'] = 'blocked' if record['evaluation']['status']=='blocked' else 'awaiting_human_review'
         event('Quality checks', 'completed', 'Deterministic checks completed. Semantic correctness still needs human review.')
         event('Human approval', 'pending', 'No tests generated or executed. Import into Review, inspect, edit and approve separately.')
-    except Exception:
+    except Exception as error:
         record['status'] = 'failed'
-        event('Coordinator', 'failed', 'Workflow stopped. Prior stage output is retained; no automatic retry or execution occurred.')
+        detail = str(error) if isinstance(error, GenerationError) else 'Workflow stopped.'
+        event('Coordinator', 'failed', detail + ' Prior stage output is retained; no automatic retry or execution occurred.')
     return record
 
 

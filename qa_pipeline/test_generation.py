@@ -18,13 +18,28 @@ def generate_preview(exported):
     }
     extras = scenarios[0]['steps'][2:] if scenarios else []
     labels = [step['action'].removeprefix('Select ') for step in extras]
-    supported_extras = len(labels) == len(set(labels)) and all(
-        label in extra_navigation and step == {'action': f'Select {label}', 'expected_result': f'{label} section is visible'}
-        for label, step in zip(labels, extras))
-    if (package['requirement'] != 'AUTH-04' or len(scenarios) != 1
-            or scenarios[0]['preconditions'] != ['Fresh browser context; no wallet connected']
-            or scenarios[0]['steps'][:2] != steps or not supported_extras):
-        raise HTTPException(422, 'Unsupported scenario. This template supports the original guest landing-page → Features steps and optional About Us, How It Works, and Roadmap navigation steps with matching expected results. Your edits are preserved; no code was generated.')
+    issues = []
+    if package['requirement'] != 'AUTH-04':
+        issues.append('This generator only supports requirement AUTH-04.')
+    if len(scenarios) != 1:
+        issues.append(f'This generator accepts one scenario at a time; this draft contains {len(scenarios)}.')
+    for index, scenario in enumerate(scenarios, 1):
+        reasons = []
+        if scenario['preconditions'] != ['Fresh browser context; no wallet connected']:
+            reasons.append('preconditions must be: Fresh browser context; no wallet connected')
+        for step_index, expected in enumerate(steps, 1):
+            if len(scenario['steps']) < step_index or scenario['steps'][step_index-1] != expected:
+                reasons.append(f'Step {step_index} must be "{expected["action"]}" with expected result "{expected["expected_result"]}"')
+        seen = set()
+        for step_index, step in enumerate(scenario['steps'][2:], 3):
+            label = step['action'].removeprefix('Select ')
+            if label in seen or label not in extra_navigation or step != {'action': f'Select {label}', 'expected_result': f'{label} section is visible'}:
+                reasons.append(f'Step {step_index} is unsupported or repeats navigation; only About Us, How It Works, and Roadmap are supported after Features')
+            seen.add(label)
+        if reasons:
+            issues.append(f'Test scenario {index}: {scenario["title"]}\n- ' + '\n- '.join(reasons))
+    if issues:
+        raise HTTPException(422, 'Python preview blocked.\n\n' + '\n\n'.join(issues) + '\n\nUnsupported means this generator cannot automate these steps, not that the scenario is necessarily incorrect. Keep broader scenarios for manual review or add automation support. Your edits are preserved; no code was generated.')
     code = '''"""Template-generated narrow public navigation check; not full AUTH-04 coverage."""
 import re
 from playwright.sync_api import expect

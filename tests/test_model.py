@@ -45,6 +45,24 @@ def test_request_contract_and_validated_result(packet):
     assert result["usage"]["output_tokens"] == 50
 
 
+@pytest.mark.parametrize('status,code,expected', [
+    (401, 'invalid_api_key', 'Authentication failed'),
+    (400, 'invalid_schema', 'Request rejected'),
+    (429, 'insufficient_quota', 'API quota unavailable'),
+    (429, 'rate_limit_exceeded', 'Quota or rate limit'),
+    (404, 'model_not_found', 'Responses API rejected the requested model'),
+    (404, 'fake-test-key', 'cause is not confirmed'),
+])
+def test_safe_http_diagnostics(packet, status, code, expected):
+    def handler(request):
+        return httpx.Response(status, json={'error': {'code': code, 'message': 'fake-test-key'}})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(GenerationError) as error:
+            generate(packet, client=client)
+    assert expected in str(error.value)
+    assert 'fake-test-key' not in str(error.value)
+
+
 @pytest.mark.parametrize("case", ["disabled", "missing_key", "missing_model", "no_evidence", "oversized"])
 def test_preflight_never_calls_provider(packet, monkeypatch, case):
     if case == "disabled":
