@@ -2,6 +2,20 @@
 
 Handoff saved September 18, 2026. User wants to resume tomorrow; no scheduled reminder requested.
 
+## Latest Resume: Paused at User's Usage Limit
+
+September 19 resume: production build succeeded using the existing framework script. Publishing the reviewed changes is now in progress; check the latest Sites deployment before repeating it. Prior pause details below describe the September 18 state.
+
+- Local changes are saved but NOT committed, pushed, or published. User asked to stop soon before publishing.
+- Added server-derived per-scenario automation classification. A mixed approved draft can retain manual scenarios while compiling exactly one supported navigation scenario. Preview and plan explicitly list what is included versus manual-only. Zero supported scenarios or multiple supported scenarios still block compilation; no silent choice or broad automation claim.
+- Added Python/API and browser regression coverage for retaining manual scenarios. Full Python suite: 113 passed. TypeScript passed. Browser review/recording/status checks: 5 passed, 1 opt-in fixed-suite test skipped; mixed-draft check: 1 passed; mobile/desktop public media checks: 3 passed.
+- Corrected outdated local and public source copy about live AI connectivity. Public source now includes a sanitized live-run summary, not private requirements or complete model output.
+- Refreshed public/demo/walkthrough-hd.webm with a 1920x1080 September 18 recording. It intentionally shows sample-data review and real browser execution, NOT a fresh AI generation. Public copy says so.
+- Refreshed public evidence using generated run 2c74f1c4-ec65-4b54-8196-850254dad27d: 1 passed, 0 failures/errors, 3.138 seconds; includes Features, About Us, How It Works, Roadmap. This isolated verification did not replace the user's saved review.
+- Original user pass evidence: generated run 783c5538-1098-45cb-95bd-213c7f73a4ec, approved revision 11, 1 passed in 1.558 seconds, landing page + Features only.
+- Next: production build then source review and publication through Sites. New build helper exited 127 ('Unable to start the Sites workflow command'); no production build completed this session. Existing bundled Node can run scripts/run-framework.mjs build as before; investigate helper/runtime only as needed.
+- Local services restarted and intentionally left available: frontend session 69438 on localhost:5173; API session 44452 on 127.0.0.1:8000. Verify availability next session. No paid AI calls were made.
+
 ## Working
 
 - OpenAI organization verification resolved the live `gpt-5-mini` access failure. Do not restart API-key troubleshooting without new evidence.

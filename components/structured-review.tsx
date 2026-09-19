@@ -8,12 +8,13 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
 const draftSchema=z.object({scenarios:z.array(z.object({title:z.string(),preconditions:z.array(z.string()),steps:z.array(z.object({action:z.string(),expected_result:z.string()})),source_ids:z.array(z.string())})),questions:z.array(z.string())});
-const responseSchema=z.object({review:z.object({revision:z.number(),approved:z.boolean(),evidence_stale:z.boolean(),mode:z.enum(["demo_data","model_generated"]),draft:draftSchema,evidence:z.array(z.object({id:z.string(),text:z.string(),start_line:z.number(),end_line:z.number()}))}).nullable()});
+const automationSchema=z.array(z.object({number:z.number(),title:z.string(),supported:z.boolean(),reasons:z.array(z.string())}));
+const responseSchema=z.object({review:z.object({revision:z.number(),approved:z.boolean(),evidence_stale:z.boolean(),mode:z.enum(["demo_data","model_generated"]),draft:draftSchema,automation:automationSchema.optional(),evidence:z.array(z.object({id:z.string(),text:z.string(),start_line:z.number(),end_line:z.number()}))}).nullable()});
 type Draft=z.infer<typeof draftSchema>;
 type Review=z.infer<typeof responseSchema>["review"];
 export function StructuredReview({identifier}:{identifier:string}){
  const [saved,setSaved]=useState<Review>(null),[draft,setDraft]=useState<Draft|null>(null),[busy,setBusy]=useState(true),[error,setError]=useState("");
- const [preview,setPreview]=useState<{code:string;limitations:string}|null>(null);
+ const [preview,setPreview]=useState<{code:string;limitations:string;coverage:z.infer<typeof automationSchema>}|null>(null);
  const [previewing,setPreviewing]=useState(false);
  const errorRef=useRef<HTMLDivElement>(null);
  useEffect(()=>{if(error){errorRef.current?.focus();errorRef.current?.scrollIntoView({block:"center",behavior:"smooth"});}},[error]);
@@ -34,7 +35,7 @@ export function StructuredReview({identifier}:{identifier:string}){
  async function generate(){if(!saved)return;setBusy(true);setPreviewing(true);setError("");setPreview(null);try{
  const r=await fetch(`/qa-api/structured-reviews/${identifier}/test-preview?revision=${saved.revision}`,{signal:AbortSignal.timeout(10000)});const body=await r.json();
  if(!r.ok){const failure=z.object({detail:z.string()}).safeParse(body);throw Error(failure.success?failure.data.detail:"Preview failed");}
- setPreview(z.object({code:z.string(),limitations:z.string()}).parse(body));
+ setPreview(z.object({code:z.string(),limitations:z.string(),coverage:automationSchema}).parse(body));
  }catch(e){setError(e instanceof DOMException&&e.name==="TimeoutError"?"Preview timed out. Check that the local Python service is running, then try again.":e instanceof TypeError?"Cannot reach the local Python service. Start it, then try Preview Python test again.":e instanceof Error?e.message:"Preview failed. Try again after reloading the saved review.");}finally{setBusy(false);setPreviewing(false);}}
  async function downloadTest(){if(!saved||!preview)return;setBusy(true);setError("");try{
  const r=await fetch(`/qa-api/structured-reviews/${identifier}/test-preview?revision=${saved.revision}`,{signal:AbortSignal.timeout(10000)});
@@ -48,6 +49,8 @@ export function StructuredReview({identifier}:{identifier:string}){
  {!saved&&<Button disabled={busy} onClick={()=>send("sample")}>Create structured sample</Button>}
  {draft&&<><fieldset disabled={busy} style={{border:0,padding:0}}>{draft.scenarios.map((scenario,i)=><article key={i} className="callout" aria-label={`Test scenario ${i+1}: ${scenario.title}`}>
  <header style={{borderBottom:"1px solid #48576a",paddingBottom:12,marginBottom:18}}><strong style={{display:"block",color:"#c0ef69",fontSize:16}}>Test scenario {i+1} of {draft.scenarios.length}</strong><h4 style={{fontSize:20,lineHeight:1.4,margin:"6px 0 0",overflowWrap:"anywhere"}}>{scenario.title||"Untitled scenario"}</h4></header>
+ <p className="scope-note">{dirty?"Automation status pending save":saved?.automation?.[i]?.supported?"Navigation automation supported · not executed":"Manual review · automation not supported"}</p>
+ {!dirty&&saved?.automation?.[i]&&!saved.automation[i].supported&&<p className="scope-note">Keep this scenario's intended behavior. A navigation test cannot replace it.</p>}
  <Button type="button" variant="outline" disabled={draft.scenarios.length<=1} aria-label={`Remove scenario ${i+1}`} title={draft.scenarios.length<=1?"Keep at least one scenario":"Remove this scenario from the unsaved draft"} style={{marginBottom:18,color:"#ffb3a0"}} onClick={()=>change(d=>{d.scenarios.splice(i,1);})}><Trash2 size={16} aria-hidden="true"/>Remove scenario</Button>
  <label>Test title<Input value={scenario.title} maxLength={2000} onChange={e=>change(d=>{d.scenarios[i].title=e.target.value;})}/></label>
  <label>Preconditions (one per line)<Textarea aria-label="Preconditions (one per line)" value={scenario.preconditions.join("\n")} onChange={e=>change(d=>{d.scenarios[i].preconditions=e.target.value?e.target.value.split("\n"):[];})}/></label>
@@ -63,7 +66,7 @@ export function StructuredReview({identifier}:{identifier:string}){
  <div className="action-row"><Button disabled={busy||!dirty} onClick={()=>send("")}>Save structured changes</Button><Button disabled={busy||dirty||saved?.approved||saved?.evidence_stale} onClick={()=>send("approve")}>Approve structured version</Button><Button variant="outline" disabled={busy||dirty} onClick={()=>send("refresh-evidence")}>Refresh structured evidence</Button><Button disabled={busy||dirty||!saved?.approved||saved?.evidence_stale} onClick={download}>Download approved package</Button><Button disabled={busy||dirty||!saved?.approved||saved?.evidence_stale} onClick={generate}>Preview Python test</Button></div>
  {previewing&&<p role="status">Generating Python preview...</p>}
  {errorNotice}
- {preview&&<section aria-label="Generated test preview"><h3>Template-generated Python · not executed</h3><p>{preview.limitations}</p><Button disabled={busy||dirty||!saved?.approved||saved?.evidence_stale} onClick={downloadTest}>Download Python test</Button><p>Save the file in browser_tests, then run from the project folder:</p><pre>.venv/bin/python -m pytest browser_tests/test_approved_guest_features.py --browser chromium -v</pre><pre style={{overflowX:"auto"}}><code>{preview.code}</code></pre>{identifier==="AUTH-04"&&saved&&<RunSuite generated={{code:preview.code,revision:saved.revision}} onComplete={()=>{}}/>}</section>}
+ {preview&&<section aria-label="Generated test preview"><h3>Template-generated Python · not executed</h3><p>{preview.limitations}</p><ul aria-label="Automation scope">{preview.coverage.map(item=><li key={item.number}>Scenario {item.number}: {item.title} — {item.supported?"Included in Python":"Manual only · not executed"}</li>)}</ul><Button disabled={busy||dirty||!saved?.approved||saved?.evidence_stale} onClick={downloadTest}>Download Python test</Button><p>Save the file in browser_tests, then run from the project folder:</p><pre>.venv/bin/python -m pytest browser_tests/test_approved_guest_features.py --browser chromium -v</pre><pre style={{overflowX:"auto"}}><code>{preview.code}</code></pre>{identifier==="AUTH-04"&&saved&&<RunSuite generated={{code:preview.code,revision:saved.revision}} onComplete={()=>{}}/>}</section>}
  {saved&&!dirty&&<ReviewEvaluation identifier={identifier} revision={saved.revision}/>}
  {saved?.evidence.map(p=><details key={p.id} className="scope-note"><summary>Source {p.id} · lines {p.start_line}–{p.end_line}</summary><blockquote>{p.text}</blockquote></details>)}
  <p className="scope-note">Approval applies to this saved version and source snapshot. It does not generate code or approve the separate fixed NoiseLabz suite. Open questions remain visible for human review.</p></>}

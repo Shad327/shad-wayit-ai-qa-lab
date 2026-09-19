@@ -5,6 +5,32 @@ from pathlib import Path
 from playwright.sync_api import expect
 
 
+def test_mixed_scenarios_keep_manual_work_visible(page, isolated_review_api):
+    from copy import deepcopy
+    url = isolated_review_api + '/structured-reviews/AUTH-04'
+    draft = page.request.post(url + '/sample', data={'revision': 0}).json()['review']['draft']
+    manual = deepcopy(draft['scenarios'][0])
+    manual.update(title='Listen without a wallet', steps=[{'action': 'Play a song', 'expected_result': 'Audio is audible'}])
+    draft['scenarios'].insert(0, manual)
+    assert page.request.put(url, data={'revision': 1, 'draft': draft}).ok
+    assert page.request.post(url + '/approve', data={'revision': 2}).ok
+    def proxy(route):
+        path = route.request.url.split('/qa-api/', 1)[1]
+        route.fulfill(response=route.fetch(url=f'{isolated_review_api}/{path}'))
+    page.route('**/qa-api/**', proxy)
+    page.goto('http://localhost:5173/')
+    page.get_by_role('button', name='03Review').click()
+    editor = page.get_by_role('region', name='Structured scenario review')
+    expect(editor.get_by_text('Manual review · automation not supported', exact=True)).to_be_visible()
+    editor.get_by_role('button', name='Preview Python test').click()
+    scope = editor.get_by_label('Automation scope')
+    expect(scope).to_contain_text('Scenario 1: Listen without a wallet')
+    expect(scope).to_contain_text('Manual only · not executed')
+    expect(scope).to_contain_text('Scenario 2: Guest can use public navigation')
+    expect(editor.get_by_role('article', name='Test scenario 1: Listen without a wallet')).to_be_visible()
+    assert page.request.get(url).json()['review']['draft'] == draft
+
+
 def test_structured_sample_edit_save_approve_reload(page,isolated_review_api):
     def proxy(route):
         path=route.request.url.split('/qa-api/',1)[1]

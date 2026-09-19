@@ -23,7 +23,7 @@ class GeneratedRunManager(RunManager):
         preview = generate_preview(exported)
         identity = json.dumps(preview, sort_keys=True) + '\nrunner-v1'
         return {**preview, 'hash': hashlib.sha256(identity.encode()).hexdigest(),
-                'scope': 'One template-generated public guest navigation test with optional About Us, How It Works, and Roadmap steps. No wallet or transaction actions.',
+                'scope': preview.get('limitations', '') + ' No wallet or transaction actions.',
                 'target': 'https://www.noiselabz.com/', 'timeout_seconds': 180}
 
     def browser_output(self, artifact):

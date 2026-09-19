@@ -2,6 +2,52 @@ from fastapi.testclient import TestClient
 from qa_pipeline.api import create_app
 
 
+def test_mixed_draft_keeps_manual_scenarios_and_binds_full_package(tmp_path):
+    from copy import deepcopy
+    source = tmp_path / 'requirements.md'
+    source.write_text('**AUTH-04** Browse and listen without a wallet.')
+    client = TestClient(create_app(source, tmp_path / 'reviews.sqlite3'))
+    url = '/structured-reviews/AUTH-04'
+    draft = client.post(url + '/sample', json={'revision': 0}).json()['review']['draft']
+    manual = deepcopy(draft['scenarios'][0])
+    manual.update(title='Listen to music', steps=[{'action': 'Play a song', 'expected_result': 'Audio is audible'}])
+    draft['scenarios'].insert(0, manual)
+    saved = client.put(url, json={'revision': 1, 'draft': draft}).json()['review']
+    assert [item['supported'] for item in saved['automation']] == [False, True]
+    assert client.get(url + '/test-preview?revision=2').status_code == 409
+    client.post(url + '/approve', json={'revision': 2})
+    preview = client.get(url + '/test-preview?revision=2').json()
+    assert preview['scenario_number'] == 2
+    assert len(preview['coverage']) == 2
+    assert '1 other scenarios remain manual' in preview['limitations']
+    assert 'Play a song' not in preview['code']
+    exported = client.get(url + '/export?revision=2').json()
+    assert exported['package']['draft'] == draft
+    assert preview['package_sha256'] == exported['sha256']
+    plan = client.get('/generated-runs/plan').json()
+    assert plan['scenario_number'] == 2
+    draft['scenarios'][0]['title'] = 'Revised manual scenario'
+    client.put(url, json={'revision': 2, 'draft': draft})
+    assert client.get('/generated-runs/plan').status_code == 409
+
+
+def test_multiple_supported_scenarios_not_silently_selected(tmp_path):
+    from copy import deepcopy
+    source = tmp_path / 'requirements.md'
+    source.write_text('**AUTH-04** Browse without a wallet.')
+    client = TestClient(create_app(source, tmp_path / 'reviews.sqlite3'))
+    url = '/structured-reviews/AUTH-04'
+    draft = client.post(url + '/sample', json={'revision': 0}).json()['review']['draft']
+    second = deepcopy(draft['scenarios'][0])
+    second['steps'].append({'action': 'Select Roadmap', 'expected_result': 'Roadmap section is visible'})
+    draft['scenarios'].append(second)
+    client.put(url, json={'revision': 1, 'draft': draft})
+    client.post(url + '/approve', json={'revision': 2})
+    response = client.get(url + '/test-preview?revision=2')
+    assert response.status_code == 422
+    assert 'More than one scenario' in response.json()['detail']
+
+
 def test_structured_edit_approval_and_source_changes(tmp_path):
     source=tmp_path/'requirements.md'
     source.write_text('**AUTH-04** Public browsing needs no wallet.')

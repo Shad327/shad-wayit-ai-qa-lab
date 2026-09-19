@@ -177,7 +177,11 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
 
     @api.get("/structured-reviews/{identifier}")
     def get_structured(identifier: Literal["AUTH-04", "keyboard"]):
-        return {"review":structured.record(identifier, source_hash())}
+        from .test_generation import automation_coverage
+        review = structured.record(identifier, source_hash())
+        if review:
+            review['automation'] = automation_coverage(identifier, review['draft']['scenarios'])
+        return {"review": review}
 
     @api.post("/structured-reviews/{identifier}/sample")
     def create_sample(identifier: Literal["AUTH-04", "keyboard"], request: ReviewRevision):
