@@ -77,3 +77,38 @@ jobs:
           name: java-api-report
           path: selenium/selenium/target/surefire-reports/
           retention-days: 7
+  sonarqube:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, macOS, ARM64, sonarqube-local]
+    timeout-minutes: 15
+
+    concurrency:
+      group: local-sonarqube
+      cancel-in-progress: false
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Analyze Java and enforce quality gate
+        working-directory: selenium/selenium
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          "/Users/shadman/Documents/Projects/shad-wayit-ai-qa-lab-main/selenium/.tools/apache-maven-3.9.12/bin/mvn" \
+            --batch-mode clean test-compile \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=shadqa-java-automation \
+            -Dsonar.projectName="ShadQA Java Automation" \
+            -Dsonar.host.url=http://localhost:9000 \
+            -Dsonar.qualitygate.wait=true \
+            -Dsonar.qualitygate.timeout=300
