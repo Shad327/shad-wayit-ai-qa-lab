@@ -1,0 +1,12 @@
+{
+  "recorded_at": "2026-09-18T23:40:19.826375-05:00",
+  "tests": 1,
+  "failures": 0,
+  "errors": 0,
+  "seconds": "3.138",
+  "run_id": "2c74f1c4-ec65-4b54-8196-850254dad27d",
+  "plan_hash": "e7429e58f4998e7cab4ce7446cdd3d1229c1271b924c3a6366c7d3556fff8a65",
+  "mode": "recorded_template_generated",
+  "scope": "Guest landing page, Features, About Us, How It Works, Roadmap",
+  "model_called": false
+}

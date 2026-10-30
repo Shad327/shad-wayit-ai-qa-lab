@@ -1,0 +1,8 @@
+{
+  "recorded_at": "2026-09-18",
+  "workflow_id": "b6c0c434-6c5c-4032-b8df-e3b90e8bc069",
+  "model": "gpt-5-mini",
+  "model_requests": 2,
+  "status": "awaiting_human_review",
+  "scope": "Scenario author and reviewer completed real API requests. This is connectivity and workflow evidence, not proof of scenario correctness or full requirement coverage."
+}
