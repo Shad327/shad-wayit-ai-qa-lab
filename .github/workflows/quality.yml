@@ -101,9 +101,12 @@ jobs:
 
       - name: Analyze Java and enforce quality gate
         working-directory: selenium/selenium
+        shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          set -o pipefail
+          mkdir -p "$GITHUB_WORKSPACE/ci-artifacts"
           "/Users/shadman/Documents/Projects/shad-wayit-ai-qa-lab-main/selenium/.tools/apache-maven-3.9.12/bin/mvn" \
             --batch-mode clean test-compile \
             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
@@ -111,4 +114,14 @@ jobs:
             -Dsonar.projectName="ShadQA Java Automation" \
             -Dsonar.host.url=http://localhost:9000 \
             -Dsonar.qualitygate.wait=true \
-            -Dsonar.qualitygate.timeout=300
+            -Dsonar.qualitygate.timeout=300 \
+            2>&1 | python3 -c 'import os, sys; token = os.environ.get("SONAR_TOKEN", ""); output = sys.stdin.read(); sys.stdout.write(output.replace(token, "***") if token else output)' \
+            | tee "$GITHUB_WORKSPACE/ci-artifacts/sonarqube-scan.log"
+
+      - name: Upload SonarQube diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonarqube-diagnostics
+          path: ci-artifacts/sonarqube-scan.log
+          retention-days: 7
