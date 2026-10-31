@@ -157,6 +157,34 @@ Runner labels: self-hosted, macOS, ARM64, sonarqube-local.
 For the SonarQube job, both this runner AND the SonarQube server must run.
 Your Mac must be awake, connected, and have sufficient disk space.
 
+### Automatic Sonar checks before merging
+
+`.github/workflows/sonar.yml` runs for pull requests targeting `main`,
+updates to those pull requests, pushes to `main`, and manual runs from Actions.
+It compiles Java test code and waits for the Sonar quality gate. It does not
+execute tests or generate coverage; test jobs are separate.
+
+The repository Actions secret `SONAR_TOKEN` must contain a valid analysis token.
+Both the local SonarQube server and the registered Mac runner must be available.
+Fork PRs fail the `Check Sonar source` job before code reaches the Mac runner.
+Only trusted contributors should be allowed to create branches in this repo.
+
+Community Build does not support native PR/branch analysis. This workflow scans
+the proposed merge commit as the shared project's latest snapshot, with GitHub
+PR autodetection disabled. Scans are serialized; the dashboard shows the most
+recent scan, not separate PR histories. GitHub retains the per-run gate result.
+Use an edition/service supporting PR analysis when separate PR dashboards and
+PR decoration are required.
+
+To enforce checks before merge, configure GitHub Settings > Rules > Rulesets
+(or Branch protection rules) for `main`: require a pull request, require status
+checks, and select `Check Sonar source` and `Sonar quality gate` after their first
+run. Also require the desired test checks. Disable bypasses/direct pushes as
+appropriate. The workflow alone does not prevent merging or direct pushes.
+
+Publish the workflow on `main` and open a branch PR to verify both check names
+appear. A gate failure must block merging once the required-check rule is set.
+
 The runner uses its own checkout under _work. Local ignored downloads are
 not automatically present in that checkout; the workflow currently uses an
 absolute path to your installed Maven.

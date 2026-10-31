@@ -1,0 +1,70 @@
+name: Java SonarQube
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Community Build has one analysis branch per project. Never overlap scans.
+concurrency:
+  group: java-sonarqube-local
+  cancel-in-progress: false
+
+jobs:
+  trusted-source:
+    name: Check Sonar source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject fork code before scheduling the Mac runner
+        env:
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ "$IS_FORK" = "true" ]; then
+            echo "Fork pull requests cannot run on the local Sonar runner. Review and move changes to a trusted repository branch first."
+            exit 1
+          fi
+
+  sonar:
+    name: Sonar quality gate
+    needs: trusted-source
+    runs-on: [self-hosted, macOS, ARM64, sonarqube-local]
+    timeout-minutes: 20
+    steps:
+      - name: Check out proposed merge or pushed commit
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Compile and enforce Sonar quality gate
+        working-directory: selenium/selenium
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "Configure the SONAR_TOKEN repository Actions secret."
+            exit 1
+          fi
+          # The ignored Maven installation is outside the runner checkout.
+          MAVEN_BIN=/Users/shadman/Documents/Projects/shad-wayit-ai-qa-lab-main/selenium/.tools/apache-maven-3.9.12/bin/mvn
+          # Disable CI PR autodetection: Community Build supports a single
+          # project snapshot, not native PR/branch analysis or PR decoration.
+          env -u GITHUB_ACTIONS "$MAVEN_BIN" --batch-mode clean test-compile \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=shadqa-java-automation \
+            -Dsonar.projectName="ShadQA Java Automation" \
+            -Dsonar.host.url=http://localhost:9000 \
+            -Dsonar.qualitygate.wait=true \
+            -Dsonar.qualitygate.timeout=600
