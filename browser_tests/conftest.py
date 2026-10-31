@@ -11,12 +11,25 @@ from qa_pipeline.api import create_app
 
 @pytest.fixture
 def isolated_review_api(tmp_path):
-    # Real HTTP API + SQLite, isolated from the owner's saved reviews.
+    # Synthetic source and SQLite state, independent of private files or env vars.
+    source = tmp_path / "requirements.md"
+    source.write_text(
+        "# Browser Test Requirements\n"
+        "**Document version:** 1.0\n\n"
+        "## Guest access\n"
+        "**AUTH-04** Browse the public landing page and use Features, About Us, "
+        "How It Works, and Roadmap navigation without connecting a wallet.\n\n"
+        "## Accessibility\n"
+        "**ACCESS-01** Keyboard navigation must reach the mobile menu trigger "
+        "with visible focus and support Enter and Space activation.\n",
+        encoding="utf-8",
+    )
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
     server = uvicorn.Server(uvicorn.Config(
-        create_app(review_path=tmp_path / "reviews.sqlite3"), log_level="error"))
+        create_app(source_path=source, review_path=tmp_path / "reviews.sqlite3"),
+        log_level="error"))
     thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True)
     thread.start()
     try:
