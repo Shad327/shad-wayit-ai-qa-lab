@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Shad Wayit | AI QA Lab",
-  description: "Explore a guided requirements-to-test workflow with Shad Wayit. Python, Playwright, and AI quality engineering.",
+  title: "Shadman Wayit, MSc | Software Engineer",
+  description: "Software engineering portfolio of Shadman Wayit, featuring full-stack development, quality engineering, and the AI QA Lab.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -1,6 +1,6 @@
 "use client";
 import {WorkflowPanel} from "@/components/workflow-panel";
-import {RecordedDemo} from "@/components/recorded-demo";
+import { Portfolio } from "@/components/portfolio";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StructuredReview } from "@/components/structured-review";
@@ -14,8 +14,8 @@ const examples = [
 ];
 const stages=["Requirement","Evidence","Review","Python test","Results"];
 export default function Home(){
- const [hosted,setHosted]=useState(false);
- useEffect(()=>{setHosted(!["localhost","127.0.0.1"].includes(window.location.hostname));},[]);
+ const [local,setLocal]=useState(false);
+ useEffect(()=>{setLocal(["localhost","127.0.0.1"].includes(window.location.hostname));},[]);
  const [interactive,setInteractive]=useState(false);
  useEffect(()=>{setInteractive(true);if(window.location.hash === "#results") setStage(4);},[]);
  const [selected,setSelected]=useState(0),[stage,setStage]=useState(0),[scenario,setScenario]=useState(examples[0].scenario),[approved,setApproved]=useState(false),[events,setEvents]=useState(["Prepared example loaded"]);
@@ -25,7 +25,7 @@ export default function Home(){
  function choose(i:number){setSelected(i);setScenario(examples[i].scenario);setApproved(false);setStage(0);setEvents([`Prepared example ${examples[i].id} loaded`]);}
  useEffect(()=>{const context=(document as unknown as {modelContext?:{registerTool:(tool:unknown,options:unknown)=>void}}).modelContext;if(!context)return;const controller=new AbortController();try{context.registerTool({name:"read_qa_demo_state",description:"Read prepared QA example and review state. No AI calls or test execution.",inputSchema:{type:"object",properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:(input:unknown)=>{if(!input||typeof input!=="object"||Object.keys(input).length)throw Error("Expected an empty object");return {requirement:ex.id,stage:stages[stage],scenario,approved,mode:"prepared_example",execution:"not_run"};}},{signal:controller.signal});}catch{}return()=>controller.abort();},[ex.id,stage,scenario,approved]);
  function download(){const url=URL.createObjectURL(new Blob([code],{type:"text/x-python"}));const a=document.createElement("a");a.href=url;a.download="test_public_ui.py";a.click();URL.revokeObjectURL(url);setEvents(e=>[...e,"Prepared Python template downloaded"]);}
- if(hosted)return <RecordedDemo/>;
+ if(!local)return <Portfolio/>;
  return <div className="site-shell"><header className="topbar"><a className="identity" href="#"><span className="monogram">SW</span><span>Shad Wayit<small>QUALITY ENGINEERING / AI</small></span></a><a className="contact" href="https://www.linkedin.com/in/shad-wayit-msc/" target="_blank" rel="noreferrer">Connect on LinkedIn <ArrowUpRight size={16}/></a></header><main>
  <section className="intro"><div><p className="eyebrow">THE QA LAB / PROJECT 001</p><h1>From requirements.<br/><span>To evidence.</span></h1><p className="intro-copy">Exploring AI-powered quality engineering through a Python testing pipeline for NoiseLabz.</p><Button className="primary-action" disabled={!interactive} onClick={()=>{move(4);window.location.hash="results";}}>Open NoiseLabz results <ArrowRight/></Button></div><div className="intro-note"><span className="small-label">THE APPROACH</span><p>Read the source.<br/>Review the reasoning.<br/>Test the outcome.</p><div className="stack">React · Python · pytest · Playwright</div><p><a href="/demo">Recorded interview walkthrough</a></p></div></section>
  <section id="results" className="lab" aria-label="Interactive QA pipeline"><div className="lab-heading"><div><FlaskConical size={20}/><h2>NoiseLabz QA pipeline</h2></div><span className="mode">Local QA workspace</span></div><div className="mode-note">Live AI drafts require a separately authorized local command. Human approval precedes browser execution. Public visitors see recorded evidence only.</div><ol className="pipeline">{stages.map((s,i)=><li key={s}><button disabled={!interactive} onClick={()=>move(i)} aria-current={stage===i?"step":undefined}><span>0{i+1}</span>{s}</button></li>)}</ol>
