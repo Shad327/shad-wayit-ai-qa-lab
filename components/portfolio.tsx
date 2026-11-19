@@ -38,7 +38,7 @@ export function Portfolio() {
   return (
     <div className="site-shell portfolio">
       <header className="topbar">
-        <a className="identity" href="/"><span className="monogram" aria-hidden="true">SW</span>Shadman Wayit</a>
+        <a className="identity" href="/"><span className="monogram" aria-hidden="true">SW</span><span>Shadman Wayit, MSc<small>Software Engineer</small></span></a>
         <nav aria-label="Portfolio">
           <a href="#experience">Experience</a>
           <a href="#projects">Projects</a>
