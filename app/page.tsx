@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { StructuredReview } from "@/components/structured-review";
 import { ScenarioReview } from "@/components/scenario-review";
 import { BrowserResults } from "@/components/browser-results";
-import { EvidenceSearch } from "@/components/evidence-search";
+import { EvidenceSearch, type EvidencePassage } from "@/components/evidence-search";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -59,6 +59,7 @@ export default function Home() {
     [scenario, setScenario] = useState(examples[0].scenario),
     [approved, setApproved] = useState(false),
     [events, setEvents] = useState(["Prepared example loaded"]);
+  const [reviewEvidence, setReviewEvidence] = useState<EvidencePassage | null>(null);
   const ex = examples[selected];
   const code = `# Prepared template — not LLM-generated or executed\n# NOISE PRD v1.0: ${ex.id}\nimport os\nfrom playwright.sync_api import Page, expect\n\ndef test_public_ui(page: Page):\n    target = os.environ["QA_TARGET_URL"]\n    page.goto(target)\n    ${ex.assertion}\n`;
   function move(n: number) {
@@ -67,6 +68,7 @@ export default function Home() {
   }
   function choose(i: number) {
     setSelected(i);
+    setReviewEvidence(null);
     setScenario(examples[i].scenario);
     setApproved(false);
     setStage(0);
@@ -232,7 +234,12 @@ export default function Home() {
                 </aside>
                 <div className="main-panel" key={`${selected}-${stage}`}>
                   <div className="panel-kicker">
-                    {ex.id} / {stages[stage].toUpperCase()}
+                    {stage === 1 ? "EVIDENCE SEARCH" : (
+                      <>
+                        {(stage === 2 || stage === 3) && reviewEvidence ? reviewEvidence.id : ex.id}
+                        {" / "}{stages[stage].toUpperCase()}
+                      </>
+                    )}
                   </div>
                   {stage === 0 && (
                     <>
@@ -259,32 +266,48 @@ export default function Home() {
                       <h3>Evidence before assumptions.</h3>
                       <EvidenceSearch
                         key={ex.id}
-                        initialQuery={selected === 0 ? "AUTH-04" : "keyboard focus"}
                         onRetrieved={(message) => setEvents((e) => [...e, message])}
+                        onReview={(passage) => {
+                          setReviewEvidence(passage);
+                          move(2);
+                        }}
                       />
-                      <Button className="primary-action" onClick={() => move(2)}>
-                        Review prepared scenario <ArrowRight />
-                      </Button>
+                      <p className="scope-note">Choose Review this evidence on the passage you want to use.</p>
                     </>
                   )}
                   {stage === 2 && (
                     <>
                       <h3>Keep a human in the loop.</h3>
-                      {selected === 0 && <WorkflowPanel />}
-                      <StructuredReview key={ex.id} identifier={selected === 0 ? "AUTH-04" : "keyboard"} />
-                      <details className="demo-guide">
-                        <summary>Earlier paragraph review</summary>
-                        <ScenarioReview
-                          identifier={selected === 0 ? "AUTH-04" : "keyboard"}
-                          initial={ex.scenario}
-                          onState={(text, approval) => {
-                            setScenario(text);
-                            setApproved(approval);
-                          }}
+                      {reviewEvidence ? (
+                        <StructuredReview
+                          key={reviewEvidence.id}
+                          identifier={reviewEvidence.id}
+                          selectedEvidence={reviewEvidence}
                           onContinue={() => move(3)}
                         />
-                        <p className="scope-note">{ex.scope}</p>
-                      </details>
+                      ) : (
+                        <>
+                          {selected === 0 && <WorkflowPanel />}
+                          <StructuredReview
+                            key={ex.id}
+                            identifier={selected === 0 ? "AUTH-04" : "keyboard"}
+                            onContinue={() => move(3)}
+                          />
+                          <details className="demo-guide">
+                            <summary>Earlier paragraph review</summary>
+                            <ScenarioReview
+                              identifier={selected === 0 ? "AUTH-04" : "keyboard"}
+                              initial={ex.scenario}
+                              onState={(text, approval) => {
+                                setScenario(text);
+                                setApproved(approval);
+                              }}
+                              onContinue={() => move(3)}
+                            />
+                            <p className="scope-note">{ex.scope}</p>
+                          </details>
+                        </>
+                      )}
                     </>
                   )}
                   {stage === 3 && (
@@ -294,7 +317,11 @@ export default function Home() {
                         Use Preview Python test below after approving the saved scenario. The same saved revision
                         is used in Review and here.
                       </p>
-                      <StructuredReview key={ex.id} identifier={selected === 0 ? "AUTH-04" : "keyboard"} />
+                      <StructuredReview
+                        key={reviewEvidence?.id ?? ex.id}
+                        identifier={reviewEvidence?.id ?? (selected === 0 ? "AUTH-04" : "keyboard")}
+                        selectedEvidence={reviewEvidence ?? undefined}
+                      />
                     </>
                   )}
                   {stage === 4 && (

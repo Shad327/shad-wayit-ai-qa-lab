@@ -80,11 +80,11 @@ class RunManager:
             row = db.execute("SELECT * FROM runs ORDER BY approved_at DESC LIMIT 1").fetchone()
             return dict(row) if row else None
 
-    def enqueue(self, identifier: UUID, plan_hash: str, approved: bool, dispatch=True):
+    def enqueue(self, identifier: UUID, plan_hash: str, approved: bool, dispatch=True, **plan_options):
         identifier = str(identifier)
         if not approved:
             raise HTTPException(422, "Review and approve the fixed suite before running it")
-        if plan_hash != self.plan()["hash"]:
+        if plan_hash != self.plan(**plan_options)["hash"]:
             raise HTTPException(409, "The suite changed. Reload and review the current plan.")
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -97,7 +97,7 @@ class RunManager:
                 raise HTTPException(409, "A run is already active. Wait for it to finish.")
             db.execute("INSERT INTO runs (id,state,plan_hash,approved_at) VALUES (?,'queued',?,?)", (identifier, plan_hash, now()))
         if dispatch:
-            self.worker = threading.Thread(target=self.execute, args=(identifier,), daemon=True)
+            self.worker = threading.Thread(target=self.execute, args=(identifier,), kwargs=plan_options, daemon=True)
             self.worker.start()
         return self.get(identifier)
 
@@ -109,18 +109,18 @@ class RunManager:
     def test_arguments(self, artifact):
         return ["browser_tests/test_noiselabz.py"]
 
-    def execute(self, identifier):
+    def execute(self, identifier, **plan_options):
         process = None
         state, code, note = "error", None, "Runner could not start; check local browser installation."
         report = f"{self.report_prefix}-{identifier}.xml"
         artifact = self.root / "outputs" / report.removesuffix(".xml")
         try:
-            if self.get(identifier)["plan_hash"] != self.plan()["hash"]:
+            if self.get(identifier)["plan_hash"] != self.plan(**plan_options)["hash"]:
                 raise RuntimeError("Suite changed after approval")
             with self.connection() as db:
                 db.execute("UPDATE runs SET state='running', started_at=? WHERE id=?", (now(), identifier))
             artifact.mkdir(parents=True, exist_ok=False)
-            command = [sys.executable, "-m", "pytest", *self.test_arguments(artifact), "-q",
+            command = [sys.executable, "-m", "pytest", *self.test_arguments(artifact, **plan_options), "-q",
                        "--browser", "chromium", "--screenshot", "on", "--tracing", "on",
                        "--output", str(self.browser_output(artifact)), "--junitxml", str(artifact.with_suffix(".xml"))]
             env = {k: os.environ[k] for k in ("HOME", "PATH", "TMPDIR", "LANG", "PLAYWRIGHT_BROWSERS_PATH") if k in os.environ}

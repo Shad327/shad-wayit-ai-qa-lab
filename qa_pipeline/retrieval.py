@@ -90,7 +90,7 @@ def retrieve(passages: List[Passage], query: str, limit: int = 3) -> dict:
     ranked = []
     for passage, words in zip(passages, content_terms):
         if ids:
-            score = 1.0 if passage.id in ids else 0.0
+            score = 1.0 if passage.id.upper() in ids else 0.0
             matched = [passage.id] if score else []
         else:
             matched = sorted(terms & words)

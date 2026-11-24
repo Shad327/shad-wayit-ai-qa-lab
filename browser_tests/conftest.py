@@ -20,6 +20,7 @@ def isolated_review_api(tmp_path):
         "**AUTH-04** Browse the public landing page and use Features, About Us, "
         "How It Works, and Roadmap navigation without connecting a wallet.\n\n"
         "## Accessibility\n"
+        "Keyboard navigation requires visible focus.\n\n"
         "**ACCESS-01** Keyboard navigation must reach the mobile menu trigger "
         "with visible focus and support Enter and Space activation.\n",
         encoding="utf-8",

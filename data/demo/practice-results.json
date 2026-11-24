@@ -1,0 +1,20 @@
+[
+  {
+    "requirement": "PRACTICE-08",
+    "title": "Public Docs navigation",
+    "run_id": "21c14a4a-ca2c-4d43-a8ed-bbd3f73ecfbe",
+    "finished_at": "2026-11-24T20:26:27.637288+00:00",
+    "outcome": "passed",
+    "detail": "The Docs index opened and both the Litepaper and Protocol links were visible.",
+    "filename": "test_approved_guest_opens_docs.py"
+  },
+  {
+    "requirement": "PRACTICE-05",
+    "title": "Mobile menu keyboard focus",
+    "run_id": "f87ab4a6-ee0d-4238-b917-d186f0d8a7ac",
+    "finished_at": "2026-11-24T20:21:15.864392+00:00",
+    "outcome": "failed",
+    "detail": "At 390 × 844, the menu button did not receive focus within 20 Tab presses. The focus indicator check was not reached.",
+    "filename": "test_approved_mobile_menu_keyboard_focus.py"
+  }
+]

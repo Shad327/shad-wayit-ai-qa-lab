@@ -8,10 +8,10 @@ import os
 import sqlite3
 from contextlib import asynccontextmanager
 from uuid import UUID
-from typing import Literal
+from typing import Annotated, Literal
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Path as RoutePath, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -48,8 +48,12 @@ class ReviewEdit(ReviewRevision):
         return value.strip()
 
 
+StructuredIdentifier = Annotated[str, RoutePath(pattern=r"^(?:(?:[A-Z]+|section)-[0-9]+|keyboard)$")]
+
+
 class StructuredEdit(ReviewRevision):
     draft: ScenarioDraft
+    evidence_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
 
 class SearchRequest(BaseModel):
@@ -92,11 +96,11 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
         passages = read_source()
         return passages[0].document_sha256 if passages else None
 
-    def export_current():
-        current = structured.record("AUTH-04", source_hash())
+    def export_current(requirement="AUTH-04"):
+        current = structured.record(requirement, source_hash())
         if current is None:
-            raise HTTPException(409, "Create and approve the guest scenario first")
-        return structured.export("AUTH-04", current["revision"], source_hash())
+            raise HTTPException(409, "Create and approve the selected scenario first")
+        return structured.export(requirement, current["revision"], source_hash())
 
     generated_runs = GeneratedRunManager(root, reviews.path.parent / "generated-runs.sqlite3", export_current)
 
@@ -136,8 +140,8 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
         return {"runs": generated_runs.history()}
 
     @api.get("/generated-runs/plan")
-    def generated_plan():
-        return generated_runs.plan()
+    def generated_plan(requirement: str = "AUTH-04"):
+        return generated_runs.plan(requirement=requirement)
 
     @api.get("/generated-runs/latest")
     def generated_latest():
@@ -148,8 +152,8 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
         return {"run": generated_runs.get(str(identifier))}
 
     @api.post("/generated-runs", status_code=202)
-    def generated_start(request: RunRequest):
-        return {"run": generated_runs.enqueue(request.request_id, request.plan_hash, request.approved)}
+    def generated_start(request: RunRequest, requirement: str = "AUTH-04"):
+        return {"run": generated_runs.enqueue(request.request_id, request.plan_hash, request.approved, requirement=requirement)}
 
     @api.get("/generated-runs/{identifier}/report")
     def generated_report(identifier: UUID):
@@ -176,11 +180,12 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
                             filename=None if kind == "screenshot" else f"generated-{identifier}-trace.zip")
 
     @api.get("/structured-reviews/{identifier}")
-    def get_structured(identifier: Literal["AUTH-04", "keyboard"]):
-        from .test_generation import automation_coverage
+    def get_structured(identifier: StructuredIdentifier):
+        from .test_generation import automation_coverage, supported_template
         review = structured.record(identifier, source_hash())
         if review:
-            review['automation'] = automation_coverage(identifier, review['draft']['scenarios'])
+            review['automation'] = automation_coverage(identifier, review['draft']['scenarios'], review['evidence'])
+            review['automation_template'] = supported_template(identifier, review['evidence'])
         return {"review": review}
 
     @api.post("/structured-reviews/{identifier}/sample")
@@ -190,26 +195,39 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
         return get_structured(identifier)
 
     @api.put("/structured-reviews/{identifier}")
-    def save_structured(identifier: Literal["AUTH-04", "keyboard"], request: StructuredEdit):
-        structured.save(identifier, request.revision, request.draft.model_dump(), structured.packet(identifier))
+    def save_structured(identifier: StructuredIdentifier, request: StructuredEdit):
+        if request.revision == 0 and request.evidence_sha256 is not None and identifier != "keyboard":
+            packet = prepare_generation(read_source(), identifier, 1)
+            results = packet["evidence"]["results"]
+            if not results or results[0]["document_sha256"] != request.evidence_sha256:
+                raise HTTPException(409, "Source evidence changed. Search again before saving.")
+            structured.save(identifier, 0, request.draft.model_dump(), packet,
+                            provenance={"model_called": False, "origin": "manual_evidence_review"})
+        else:
+            structured.save(identifier, request.revision, request.draft.model_dump(), structured.packet(identifier))
         return get_structured(identifier)
 
     @api.post("/structured-reviews/{identifier}/refresh-evidence")
-    def refresh_structured(identifier: Literal["AUTH-04", "keyboard"], request: ReviewRevision):
+    def refresh_structured(identifier: StructuredIdentifier, request: ReviewRevision):
         current = structured.record(identifier, source_hash())
         if current is None:
             raise HTTPException(404, "Create a sample draft first")
-        packet = prepare_generation(read_source(), "AUTH-04" if identifier == "AUTH-04" else "keyboard focus", 1)
+        packet = prepare_generation(read_source(), "keyboard focus" if identifier == "keyboard" else identifier, 1)
+        if identifier.startswith("section-"):
+            results = packet["evidence"]["results"]
+            previous = current["evidence"][0]
+            if not results or any(results[0][field] != previous[field] for field in ("section", "text")):
+                raise HTTPException(409, "This section changed or moved. Search the document again to select current evidence.")
         structured.save(identifier, request.revision, current["draft"], packet)
         return get_structured(identifier)
 
     @api.post("/structured-reviews/{identifier}/approve")
-    def approve_structured(identifier: Literal["AUTH-04", "keyboard"], request: ReviewRevision):
+    def approve_structured(identifier: StructuredIdentifier, request: ReviewRevision):
         structured.update("structured:" + identifier, request.revision, approve=True, current_hash=source_hash())
         return get_structured(identifier)
 
     @api.get("/structured-reviews/{identifier}/evaluation")
-    def evaluate_structured(identifier: Literal["AUTH-04", "keyboard"]):
+    def evaluate_structured(identifier: StructuredIdentifier):
         from .evaluation import evaluate
         current = structured.record(identifier, source_hash())
         if current is None:
@@ -222,11 +240,11 @@ def create_app(source_path: Path = None, review_path: Path = None, run_manager=N
         return result
 
     @api.get("/structured-reviews/{identifier}/export")
-    def export_structured(identifier: Literal["AUTH-04", "keyboard"], revision: int = Query(ge=1)):
+    def export_structured(identifier: StructuredIdentifier, revision: int = Query(ge=1)):
         return structured.export(identifier, revision, source_hash())
 
     @api.get("/structured-reviews/{identifier}/test-preview")
-    def preview_structured(identifier: Literal["AUTH-04", "keyboard"], revision: int = Query(ge=1)):
+    def preview_structured(identifier: StructuredIdentifier, revision: int = Query(ge=1)):
         from .test_generation import generate_preview
         return generate_preview(structured.export(identifier, revision, source_hash()))
 

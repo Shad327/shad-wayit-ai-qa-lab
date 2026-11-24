@@ -9,8 +9,9 @@ const runSchema = z.object({run:z.object({id:z.string(),state:z.enum(["queued","
 type Run = z.infer<typeof runSchema>["run"];
 const active = (run:Run) => run?.state === "queued" || run?.state === "running";
 
-export function RunSuite({onComplete,generated}:{onComplete:()=>void;generated?:{code:string;revision:number}}) {
+export function RunSuite({onComplete,generated}:{onComplete:()=>void;generated?:{code:string;revision:number;requirement:string}}) {
   const base=generated?"/generated-runs":"/runs";
+  const requirementQuery=generated?`?requirement=${encodeURIComponent(generated.requirement)}`:"";
   const [plan,setPlan]=useState<z.infer<typeof planSchema>|null>(null);
   const [run,setRun]=useState<Run>(null),[approved,setApproved]=useState(false);
   const [error,setError]=useState(""),[busy,setBusy]=useState(false),[reload,setReload]=useState(0);
@@ -25,10 +26,10 @@ export function RunSuite({onComplete,generated}:{onComplete:()=>void;generated?:
   useEffect(()=>{
     let mounted=true;
     setError("");setApproved(false);setPlan(null);
-    Promise.all([read(`${base}/plan`),read(`${base}/latest`)]).then(([p,r])=>{if(mounted){const parsed=planSchema.parse(p);if(generated&&(parsed.code!==generated.code||parsed.revision!==generated.revision))throw Error("Preview changed");setPlan(parsed);setRun(runSchema.parse(r).run);}})
+    Promise.all([read(`${base}/plan${requirementQuery}`),read(`${base}/latest`)]).then(([p,r])=>{if(mounted){const parsed=planSchema.parse(p);if(generated&&(parsed.code!==generated.code||parsed.revision!==generated.revision))throw Error("Preview changed");setPlan(parsed);setRun(runSchema.parse(r).run);}})
       .catch(()=>{if(mounted)setError("Start the local Python service, then reload the run plan.");});
     return()=>{mounted=false;};
-  },[reload,base,generated?.code,generated?.revision]);
+  },[reload,base,requirementQuery,generated?.code,generated?.revision]);
   useEffect(()=>{
     if(!active(run)) return;
     let mounted=true;
@@ -44,7 +45,7 @@ export function RunSuite({onComplete,generated}:{onComplete:()=>void;generated?:
     setBusy(true);setError("");
     requestId.current ??= crypto.randomUUID();
     try{
-      const body=await read(base,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request_id:requestId.current,plan_hash:plan.hash,approved:true})});
+      const body=await read(base+requirementQuery,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request_id:requestId.current,plan_hash:plan.hash,approved:true})});
       const next=runSchema.parse(body).run;setRun(next);setApproved(false);requestId.current=null;
       if(next&&!active(next))completion.current();
     }catch(e){setError(e instanceof Error?e.message:"Run request failed. Retry uses the same request ID.");}

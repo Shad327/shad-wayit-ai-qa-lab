@@ -1,7 +1,9 @@
 import json
 import os
+import re
 from pathlib import Path
 
+import pytest
 from playwright.sync_api import expect
 
 
@@ -113,3 +115,82 @@ def test_approved_template_preview(page, isolated_review_api):
     expect(alert).to_contain_text('Step 2')
     expect(alert).to_be_focused()
     expect(alert).to_be_in_viewport()
+
+
+
+@pytest.mark.parametrize(("query", "identifier"), [("ACCESS-01", "ACCESS-01"), ("keyboard focus", "section-7")])
+def test_searched_evidence_opens_and_saves_its_own_review(page, isolated_review_api, query, identifier):
+    def proxy(route):
+        path = route.request.url.split("/qa-api/", 1)[1]
+        route.fulfill(response=route.fetch(url=f"{isolated_review_api}/{path}"))
+
+    page.route("**/qa-api/**", proxy)
+    page.goto("http://localhost:5173/?lab")
+    page.get_by_role("button", name="02Evidence").click()
+    expect(page.get_by_text("EVIDENCE SEARCH", exact=True)).to_be_visible()
+    search = page.get_by_label("Requirement ID or search phrase")
+    expect(search).to_have_value("")
+    search.fill(query)
+    page.get_by_role("button", name="Find evidence").click()
+    page.get_by_role("button", name="Review this evidence").first.click()
+    expect(page.get_by_text(f"{identifier} / REVIEW", exact=True)).to_be_visible()
+    expect(page.get_by_role("heading", name=f"Selected evidence: {identifier}")).to_be_visible()
+    page.get_by_label("Test title").fill("Mobile menu supports keyboard focus")
+    page.get_by_label("Action 1").fill("Press Tab to reach the menu")
+    page.get_by_label("Expected result 1").fill("The menu trigger receives focus")
+    page.get_by_role("button", name="Save structured changes").click()
+    expect(page.get_by_text("Structured version 1 awaiting approval")).to_be_visible()
+
+    saved = page.request.get(f"{isolated_review_api}/structured-reviews/{identifier}").json()["review"]
+    assert saved["draft"]["scenarios"][0]["source_ids"] == [identifier]
+    assert saved["evidence"][0]["id"] == identifier
+    assert not saved["automation"][0]["supported"]
+    assert page.request.get(f"{isolated_review_api}/structured-reviews/AUTH-04").json()["review"] is None
+
+
+
+def test_keyboard_review_previews_and_loads_its_own_run_plan(page, isolated_review_api):
+    def proxy(route):
+        path = route.request.url.split("/qa-api/", 1)[1]
+        route.fulfill(response=route.fetch(url=f"{isolated_review_api}/{path}"))
+
+    page.route("**/qa-api/**", proxy)
+    page.goto("http://localhost:5173/?lab")
+    page.get_by_role("button", name="02Evidence").click()
+    page.get_by_label("Requirement ID or search phrase").fill("section-7")
+    page.get_by_role("button", name="Find evidence").click()
+    page.get_by_role("button", name="Review this evidence").click()
+    page.get_by_label("Test title").fill("Check mobile focus")
+    page.get_by_label("Action 1").fill("Press Tab")
+    page.get_by_label("Expected result 1").fill("Focus is visible")
+    page.get_by_role("button", name="Save structured changes").click()
+    page.get_by_role("button", name="Approve structured version").click()
+    page.get_by_role("button", name="Use keyboard automation template").click()
+    page.get_by_role("button", name="Save structured changes").click()
+    expect(page.get_by_text("Keyboard automation supported · not executed")).to_be_visible()
+    expect(page.get_by_text("Structured version 2 awaiting approval")).to_be_visible()
+    expect(page.get_by_role("button", name="Continue to Python test")).to_be_disabled()
+    page.get_by_role("button", name="Approve structured version").click()
+    page.get_by_role("button", name="Continue to Python test").click()
+    expect(page.get_by_text("section-7 / PYTHON TEST", exact=True)).to_be_visible()
+    page.get_by_role("button", name="Preview Python test").click()
+    preview = page.get_by_role("region", name="Generated test preview")
+    expect(preview).to_contain_text("def test_approved_mobile_menu_keyboard_focus(page):")
+    code = preview.locator("code").inner_text()
+    compile(code, "keyboard_preview.py", "exec")
+    plan = page.request.get(f"{isolated_review_api}/generated-runs/plan?requirement=section-7").json()
+    assert plan["code"] == code
+    assert plan["revision"] == 2
+    preview.get_by_role("checkbox", name="I reviewed this generated code and approve its public UI check.").check()
+    expect(preview.get_by_role("button", name="Run approved generated test")).to_be_enabled()
+
+    if os.environ.get("QA_TEST_KEYBOARD_RUN") == "1":
+        preview.get_by_role("button", name="Run approved generated test").click()
+        status = preview.get_by_text("Run status:", exact=False)
+        expect(status).to_contain_text(re.compile(r"Run status: (passed|failed)"), timeout=180000)
+        expect(preview.get_by_role("link", name="Download generated-run report (if available)")).to_be_visible()
+        expect(preview.get_by_role("link", name="Download Playwright trace")).to_be_visible()
+        page.get_by_role("button", name="05Results").click()
+        history = page.get_by_role("region", name="Generated test history")
+        history.get_by_role("button", name=re.compile(r"^(passed|failed) ·")).first.click()
+        expect(history.get_by_role("link", name="Download this run’s report")).to_be_visible()

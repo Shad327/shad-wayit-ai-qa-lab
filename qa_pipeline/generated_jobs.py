@@ -18,8 +18,8 @@ class GeneratedRunManager(RunManager):
         with self.connection() as db:
             return [dict(row) for row in db.execute("SELECT * FROM runs ORDER BY approved_at DESC, id DESC LIMIT 10").fetchall()]
 
-    def plan(self):
-        exported = self.export_current()
+    def plan(self, requirement=None):
+        exported = self.export_current() if requirement is None else self.export_current(requirement)
         preview = generate_preview(exported)
         identity = json.dumps(preview, sort_keys=True) + '\nrunner-v1'
         return {**preview, 'hash': hashlib.sha256(identity.encode()).hexdigest(),
@@ -29,12 +29,12 @@ class GeneratedRunManager(RunManager):
     def browser_output(self, artifact):
         return artifact / "artifacts"
 
-    def test_arguments(self, artifact):
-        plan = self.plan()
+    def test_arguments(self, artifact, **plan_options):
+        plan = self.plan(**plan_options)
         identifier = artifact.name.removeprefix(self.report_prefix + '-')
         if self.get(identifier)['plan_hash'] != plan['hash']:
             raise HTTPException(409, 'Approved scenario changed before launch')
-        test = artifact / 'test_approved_guest_features.py'
+        test = artifact / plan.get('filename', 'test_approved_guest_features.py')
         test.write_text(plan['code'])
         (artifact / 'manifest.json').write_text(json.dumps(plan, indent=2))
         config = artifact / 'pytest.ini'
