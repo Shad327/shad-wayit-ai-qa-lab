@@ -1,6 +1,7 @@
 "use client";
 import { WorkflowPanel } from "@/components/workflow-panel";
 import { Portfolio } from "@/components/portfolio";
+import { RecordedDemo } from "@/components/recorded-demo";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StructuredReview } from "@/components/structured-review";
@@ -72,6 +73,7 @@ export default function Home() {
     setStage(0);
     setEvents([`Prepared example ${examples[i].id} loaded`]);
   }
+
   useEffect(() => {
     const context = (
       document as unknown as { modelContext?: { registerTool: (tool: unknown, options: unknown) => void } }
@@ -112,7 +114,11 @@ export default function Home() {
     URL.revokeObjectURL(url);
     setEvents((e) => [...e, "Prepared Python template downloaded"]);
   }
-  if (!showLab) return <Portfolio />;
+  const showProfile = false;
+
+  if (!showLab) {
+    return showProfile ? <Portfolio /> : <RecordedDemo />;
+  }
   return (
     <div className="site-shell">
       <header className="topbar">
