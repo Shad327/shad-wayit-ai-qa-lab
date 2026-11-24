@@ -1,7 +1,6 @@
 "use client";
 import { WorkflowPanel } from "@/components/workflow-panel";
 import { Portfolio } from "@/components/portfolio";
-import { RecordedDemo } from "@/components/recorded-demo";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StructuredReview } from "@/components/structured-review";
@@ -116,9 +115,7 @@ export default function Home() {
   }
   const showProfile = false;
 
-  if (!showLab) {
-    return showProfile ? <Portfolio /> : <RecordedDemo />;
-  }
+  if (!showLab && showProfile) return <Portfolio />;
   return (
     <div className="site-shell">
       <header className="topbar">
@@ -149,16 +146,22 @@ export default function Home() {
             <p className="intro-copy">
               Exploring AI-powered quality engineering through a Python testing pipeline for NoiseLabz.
             </p>
-            <Button
-              className="primary-action"
-              disabled={!interactive}
-              onClick={() => {
-                move(4);
-                window.location.hash = "results";
-              }}
-            >
-              Open NoiseLabz results <ArrowRight />
-            </Button>
+            {showLab ? (
+              <Button
+                className="primary-action"
+                disabled={!interactive}
+                onClick={() => {
+                  move(4);
+                  window.location.hash = "results";
+                }}
+              >
+                Open NoiseLabz results <ArrowRight />
+              </Button>
+            ) : (
+              <a className="primary-action" href="/demo">
+                Watch the recorded demo <ArrowRight />
+              </a>
+            )}
           </div>
           <div className="intro-note">
             <span className="small-label">THE APPROACH</span>
@@ -175,183 +178,187 @@ export default function Home() {
             </p>
           </div>
         </section>
-        <section id="results" className="lab" aria-label="Interactive QA pipeline">
-          <div className="lab-heading">
-            <div>
-              <FlaskConical size={20} />
-              <h2>NoiseLabz QA pipeline</h2>
-            </div>
-            <span className="mode">Local QA workspace</span>
-          </div>
-          <div className="mode-note">
-            Live AI drafts require a separately authorized local command. Human approval precedes browser
-            execution. Public visitors see recorded evidence only.
-          </div>
-          <ol className="pipeline">
-            {stages.map((s, i) => (
-              <li key={s}>
-                <button
-                  disabled={!interactive}
-                  onClick={() => move(i)}
-                  aria-current={stage === i ? "step" : undefined}
-                >
-                  <span>0{i + 1}</span>
-                  {s}
-                </button>
-              </li>
-            ))}
-          </ol>
-          <div className="workspace">
-            <aside className="requirements">
-              <p className="small-label">REQUIREMENT LIBRARY</p>
-              {examples.map((item, i) => (
-                <button
-                  disabled={!interactive}
-                  className={`requirement ${selected === i ? "selected" : ""}`}
-                  key={item.id}
-                  onClick={() => choose(i)}
-                >
-                  <span className="req-meta">
-                    {item.id}
-                    <FileText size={14} />
-                  </span>
-                  <strong>{item.title}</strong>
-                  <span>{item.category}</span>
-                </button>
-              ))}
-              <p className="source-note">
-                NOISE product requirements
-                <br />
-                <strong>Version 1.0 · Sep 9, 2026</strong>
-              </p>
-            </aside>
-            <div className="main-panel" key={`${selected}-${stage}`}>
-              <div className="panel-kicker">
-                {ex.id} / {stages[stage].toUpperCase()}
+        {showLab && (
+          <>
+            <section id="results" className="lab" aria-label="Interactive QA pipeline">
+              <div className="lab-heading">
+                <div>
+                  <FlaskConical size={20} />
+                  <h2>NoiseLabz QA pipeline</h2>
+                </div>
+                <span className="mode">Local QA workspace</span>
               </div>
-              {stage === 0 && (
-                <>
-                  <h3>{ex.title}</h3>
-                  <p className="panel-description">
-                    Start with expected behavior, before looking at what the application currently does.
-                  </p>
-                  <blockquote>{ex.quote}</blockquote>
-                  <div className="fact-row">
-                    <span>Test target</span>
-                    <strong>NoiseLabz public interface</strong>
-                  </div>
-                  <div className="fact-row">
-                    <span>First scope</span>
-                    <strong>Guest UI · no transactions</strong>
-                  </div>
-                  <Button className="primary-action" disabled={!interactive} onClick={() => move(1)}>
-                    Inspect source evidence <ArrowRight />
-                  </Button>
-                </>
-              )}
-              {stage === 1 && (
-                <>
-                  <h3>Evidence before assumptions.</h3>
-                  <EvidenceSearch
-                    key={ex.id}
-                    initialQuery={selected === 0 ? "AUTH-04" : "keyboard focus"}
-                    onRetrieved={(message) => setEvents((e) => [...e, message])}
-                  />
-                  <Button className="primary-action" onClick={() => move(2)}>
-                    Review prepared scenario <ArrowRight />
-                  </Button>
-                </>
-              )}
-              {stage === 2 && (
-                <>
-                  <h3>Keep a human in the loop.</h3>
-                  {selected === 0 && <WorkflowPanel />}
-                  <StructuredReview key={ex.id} identifier={selected === 0 ? "AUTH-04" : "keyboard"} />
-                  <details className="demo-guide">
-                    <summary>Earlier paragraph review</summary>
-                    <ScenarioReview
-                      identifier={selected === 0 ? "AUTH-04" : "keyboard"}
-                      initial={ex.scenario}
-                      onState={(text, approval) => {
-                        setScenario(text);
-                        setApproved(approval);
-                      }}
-                      onContinue={() => move(3)}
-                    />
-                    <p className="scope-note">{ex.scope}</p>
-                  </details>
-                </>
-              )}
-              {stage === 3 && (
-                <>
-                  <h3>Review and run the saved Python test.</h3>
-                  <p>
-                    Use Preview Python test below after approving the saved scenario. The same saved revision
-                    is used in Review and here.
-                  </p>
-                  <StructuredReview key={ex.id} identifier={selected === 0 ? "AUTH-04" : "keyboard"} />
-                </>
-              )}
-              {stage === 4 && (
-                <>
-                  <h3>Results must be earned.</h3>
-                  <BrowserResults />
-                </>
-              )}
-            </div>
-            <aside className="activity">
-              <p className="small-label">SESSION ACTIVITY</p>
-              <p className="activity-hint">
-                Actual interface actions.
-                <br />
-                No simulated agent calls.
-              </p>
-              <ol>
-                {events.slice(-6).map((event, i) => (
-                  <li key={`${i}-${event}`}>
-                    <span>{String(i + 1).padStart(2, "0")}</span>
-                    {event}
+              <div className="mode-note">
+                Live AI drafts require a separately authorized local command. Human approval precedes browser
+                execution. Public visitors see recorded evidence only.
+              </div>
+              <ol className="pipeline">
+                {stages.map((s, i) => (
+                  <li key={s}>
+                    <button
+                      disabled={!interactive}
+                      onClick={() => move(i)}
+                      aria-current={stage === i ? "step" : undefined}
+                    >
+                      <span>0{i + 1}</span>
+                      {s}
+                    </button>
                   </li>
                 ))}
               </ol>
-              <div className="activity-bottom">
-                <span className="small-label">BUILD STATUS</span>
+              <div className="workspace">
+                <aside className="requirements">
+                  <p className="small-label">REQUIREMENT LIBRARY</p>
+                  {examples.map((item, i) => (
+                    <button
+                      disabled={!interactive}
+                      className={`requirement ${selected === i ? "selected" : ""}`}
+                      key={item.id}
+                      onClick={() => choose(i)}
+                    >
+                      <span className="req-meta">
+                        {item.id}
+                        <FileText size={14} />
+                      </span>
+                      <strong>{item.title}</strong>
+                      <span>{item.category}</span>
+                    </button>
+                  ))}
+                  <p className="source-note">
+                    NOISE product requirements
+                    <br />
+                    <strong>Version 1.0 · Sep 9, 2026</strong>
+                  </p>
+                </aside>
+                <div className="main-panel" key={`${selected}-${stage}`}>
+                  <div className="panel-kicker">
+                    {ex.id} / {stages[stage].toUpperCase()}
+                  </div>
+                  {stage === 0 && (
+                    <>
+                      <h3>{ex.title}</h3>
+                      <p className="panel-description">
+                        Start with expected behavior, before looking at what the application currently does.
+                      </p>
+                      <blockquote>{ex.quote}</blockquote>
+                      <div className="fact-row">
+                        <span>Test target</span>
+                        <strong>NoiseLabz public interface</strong>
+                      </div>
+                      <div className="fact-row">
+                        <span>First scope</span>
+                        <strong>Guest UI · no transactions</strong>
+                      </div>
+                      <Button className="primary-action" disabled={!interactive} onClick={() => move(1)}>
+                        Inspect source evidence <ArrowRight />
+                      </Button>
+                    </>
+                  )}
+                  {stage === 1 && (
+                    <>
+                      <h3>Evidence before assumptions.</h3>
+                      <EvidenceSearch
+                        key={ex.id}
+                        initialQuery={selected === 0 ? "AUTH-04" : "keyboard focus"}
+                        onRetrieved={(message) => setEvents((e) => [...e, message])}
+                      />
+                      <Button className="primary-action" onClick={() => move(2)}>
+                        Review prepared scenario <ArrowRight />
+                      </Button>
+                    </>
+                  )}
+                  {stage === 2 && (
+                    <>
+                      <h3>Keep a human in the loop.</h3>
+                      {selected === 0 && <WorkflowPanel />}
+                      <StructuredReview key={ex.id} identifier={selected === 0 ? "AUTH-04" : "keyboard"} />
+                      <details className="demo-guide">
+                        <summary>Earlier paragraph review</summary>
+                        <ScenarioReview
+                          identifier={selected === 0 ? "AUTH-04" : "keyboard"}
+                          initial={ex.scenario}
+                          onState={(text, approval) => {
+                            setScenario(text);
+                            setApproved(approval);
+                          }}
+                          onContinue={() => move(3)}
+                        />
+                        <p className="scope-note">{ex.scope}</p>
+                      </details>
+                    </>
+                  )}
+                  {stage === 3 && (
+                    <>
+                      <h3>Review and run the saved Python test.</h3>
+                      <p>
+                        Use Preview Python test below after approving the saved scenario. The same saved revision
+                        is used in Review and here.
+                      </p>
+                      <StructuredReview key={ex.id} identifier={selected === 0 ? "AUTH-04" : "keyboard"} />
+                    </>
+                  )}
+                  {stage === 4 && (
+                    <>
+                      <h3>Results must be earned.</h3>
+                      <BrowserResults />
+                    </>
+                  )}
+                </div>
+                <aside className="activity">
+                  <p className="small-label">SESSION ACTIVITY</p>
+                  <p className="activity-hint">
+                    Actual interface actions.
+                    <br />
+                    No simulated agent calls.
+                  </p>
+                  <ol>
+                    {events.slice(-6).map((event, i) => (
+                      <li key={`${i}-${event}`}>
+                        <span>{String(i + 1).padStart(2, "0")}</span>
+                        {event}
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="activity-bottom">
+                    <span className="small-label">BUILD STATUS</span>
+                    <p>
+                      Interface <strong>Interactive</strong>
+                    </p>
+                    <p>
+                      Retrieval <strong>Source-backed</strong>
+                    </p>
+                    <p>
+                      Live LLM <strong>Not connected</strong>
+                    </p>
+                    <p>
+                      Browser tests <strong>Local pytest</strong>
+                    </p>
+                  </div>
+                </aside>
+              </div>
+            </section>
+            <section className="about">
+              <div>
+                <p className="eyebrow">THE ENGINEER BEHIND THE LAB</p>
+                <h2>
+                  Testing experience.
+                  <br />A new toolkit.
+                </h2>
+              </div>
+              <div>
                 <p>
-                  Interface <strong>Interactive</strong>
+                  I’m Shad Wayit. My background spans enterprise UI and API testing with JavaScript, TypeScript,
+                  Cypress, and Java/Selenium. This project is where I’m developing Python, Playwright, and AI
+                  engineering skills through working software.
                 </p>
                 <p>
-                  Retrieval <strong>Source-backed</strong>
-                </p>
-                <p>
-                  Live LLM <strong>Not connected</strong>
-                </p>
-                <p>
-                  Browser tests <strong>Local pytest</strong>
+                  NoiseLabz is a friend’s project in which I’m an investor. My planned contribution is testing and
+                  quality control. The QA toolkit is my portfolio project.
                 </p>
               </div>
-            </aside>
-          </div>
-        </section>
-        <section className="about">
-          <div>
-            <p className="eyebrow">THE ENGINEER BEHIND THE LAB</p>
-            <h2>
-              Testing experience.
-              <br />A new toolkit.
-            </h2>
-          </div>
-          <div>
-            <p>
-              I’m Shad Wayit. My background spans enterprise UI and API testing with JavaScript, TypeScript,
-              Cypress, and Java/Selenium. This project is where I’m developing Python, Playwright, and AI
-              engineering skills through working software.
-            </p>
-            <p>
-              NoiseLabz is a friend’s project in which I’m an investor. My planned contribution is testing and
-              quality control. The QA toolkit is my portfolio project.
-            </p>
-          </div>
-        </section>
+            </section>
+          </>
+        )}
       </main>
       <footer>
         <span>SHAD WAYIT / AI QA LAB</span>
