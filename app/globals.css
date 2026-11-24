@@ -68,3 +68,12 @@
   .portfolio .topbar { flex-wrap: wrap; gap: 1rem; }
   .portfolio-role, .portfolio-details { grid-template-columns: 1fr; gap: .75rem; }
 }
+.portfolio-summary {
+  list-style: disc;
+  padding-inline-start: 1.5rem;
+  margin-block: 1rem 1.5rem;
+}
+
+.portfolio-summary li + li {
+  margin-top: 0.5rem;
+}
