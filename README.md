@@ -31,7 +31,7 @@ Start these in separate terminals:
 npm run dev
 ```
 
-Open http://localhost:5173. Review → create sample → optionally add supported sections → save → inspect evaluation → approve → preview code → approve execution → run → Results.
+Open http://localhost:5173/ for the portfolio or http://localhost:5173/?lab for the interactive QA Lab. In the lab, follow Review → create sample → optionally add supported sections → save → inspect evaluation → approve → preview code → approve execution → run → Results.
 
 ## Verify
 

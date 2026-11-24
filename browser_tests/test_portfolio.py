@@ -8,7 +8,7 @@ def test_review_survives_reload_and_edit_clears_approval(page, isolated_review_a
         route.fulfill(response=response)
     # Only reroute to an isolated real backend. No API responses are mocked.
     page.route("**/qa-api/**", proxy)
-    page.goto("http://localhost:5173/")
+    page.goto("http://localhost:5173/?lab")
     page.get_by_role("button", name="03Review").click()
     page.get_by_text("Earlier paragraph review", exact=True).click()
     scenario = page.get_by_label("Scenario", exact=True)
@@ -37,7 +37,7 @@ def test_attach_real_evidence_to_sample_and_reload(page, isolated_review_api):
         path = route.request.url.split("/qa-api/", 1)[1]
         route.fulfill(response=route.fetch(url=f"{isolated_review_api}/{path}"))
     page.route("**/qa-api/**", proxy)
-    page.goto("http://localhost:5173/")
+    page.goto("http://localhost:5173/?lab")
     page.get_by_role("button", name="03Review").click()
     page.get_by_text("Earlier paragraph review", exact=True).click()
     page.get_by_role("button", name="Attach evidence and save sample").click()

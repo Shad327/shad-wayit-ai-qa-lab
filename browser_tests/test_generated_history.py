@@ -15,7 +15,7 @@ def test_history_accessible_directly_from_results(page, isolated_review_api, tmp
         path = route.request.url.split('/qa-api/', 1)[1]
         route.fulfill(response=route.fetch(url=f'{isolated_review_api}/{path}'))
     page.route('**/qa-api/**', proxy)
-    page.goto('http://localhost:5173/#results')
+    page.goto('http://localhost:5173/?lab#results')
     history = page.get_by_role('region', name='Generated test history')
     expect(history).to_contain_text(identifier)
     history.get_by_role('button', name=re.compile('^interrupted')).click()

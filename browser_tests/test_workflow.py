@@ -6,7 +6,7 @@ def test_fixture_workflow_requires_human_review(page, isolated_review_api):
         path = route.request.url.split('/qa-api/', 1)[1]
         route.fulfill(response=route.fetch(url=f'{isolated_review_api}/{path}'))
     page.route('**/qa-api/**', proxy)
-    page.goto('http://localhost:5173/')
+    page.goto('http://localhost:5173/?lab')
     page.get_by_role('button', name='03Review').click()
     workflow = page.get_by_role('region', name='Coordinated QA workflow')
     workflow.get_by_role('button', name='Run guardrail benchmark').click()

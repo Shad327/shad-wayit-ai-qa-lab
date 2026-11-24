@@ -18,7 +18,7 @@ def test_mixed_scenarios_keep_manual_work_visible(page, isolated_review_api):
         path = route.request.url.split('/qa-api/', 1)[1]
         route.fulfill(response=route.fetch(url=f'{isolated_review_api}/{path}'))
     page.route('**/qa-api/**', proxy)
-    page.goto('http://localhost:5173/')
+    page.goto('http://localhost:5173/?lab')
     page.get_by_role('button', name='03Review').click()
     editor = page.get_by_role('region', name='Structured scenario review')
     expect(editor.get_by_text('Manual review · automation not supported', exact=True)).to_be_visible()
@@ -36,7 +36,7 @@ def test_structured_sample_edit_save_approve_reload(page,isolated_review_api):
         path=route.request.url.split('/qa-api/',1)[1]
         route.fulfill(response=route.fetch(url=f'{isolated_review_api}/{path}'))
     page.route('**/qa-api/**',proxy)
-    page.goto('http://localhost:5173/')
+    page.goto('http://localhost:5173/?lab')
     page.get_by_role('button',name='03Review').click()
     editor=page.get_by_role('region',name='Structured scenario review')
     editor.get_by_role('button',name='Create structured sample').click()
@@ -72,7 +72,7 @@ def test_approved_template_preview(page, isolated_review_api):
         path = route.request.url.split('/qa-api/', 1)[1]
         route.fulfill(response=route.fetch(url=f'{isolated_review_api}/{path}'))
     page.route('**/qa-api/**', proxy)
-    page.goto('http://localhost:5173/')
+    page.goto('http://localhost:5173/?lab')
     page.get_by_role('button', name='03Review').click()
     editor = page.get_by_role('region', name='Structured scenario review')
     editor.get_by_role('button', name='Create structured sample').click()

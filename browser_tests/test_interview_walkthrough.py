@@ -25,7 +25,7 @@ def test_interview_walkthrough(page, isolated_review_api):
         route.fulfill(response=route.fetch(url=f'{isolated_review_api}/{path}'))
     page.route('**/qa-api/**', proxy)
     page.set_viewport_size({'width':1920,'height':1080} if recording else {'width':1440,'height':1000})
-    page.goto('http://localhost:5173/')
+    page.goto('http://localhost:5173/?lab')
     if recording:
         page.add_style_tag(content='body { zoom: 1.25; } html { scroll-behavior: auto; }')
     pause_at(page.get_by_role('heading', level=1), 3)

@@ -13,7 +13,7 @@ def test_run_status_colors(page, state, color):
     page.route("**/qa-api/runs/latest", lambda route: route.fulfill(json={"run": {
         "id": "display-test", "state": state, "approved_at": "2026-09-18T12:00:00Z",
         "finished_at": "2026-09-18T12:01:00Z", "note": None}}))
-    page.goto("http://localhost:5173/")
+    page.goto("http://localhost:5173/?lab")
     page.get_by_role("button", name="05Results").click()
     status = page.get_by_role("article", name="Run approved NoiseLabz suite").get_by_role("status")
     expect(status).to_contain_text(state)
@@ -22,7 +22,7 @@ def test_run_status_colors(page, state, color):
 
 @pytest.mark.skipif(os.getenv("QA_TEST_RUN_WORKFLOW") != "1", reason="Set QA_TEST_RUN_WORKFLOW=1 to launch a real NoiseLabz run")
 def test_approve_run_and_receive_real_results(page):
-    page.goto("http://localhost:5173/#results")
+    page.goto("http://localhost:5173/?lab#results")
     runner = page.get_by_role("article", name="Run approved NoiseLabz suite")
     approve = runner.get_by_role("checkbox")
     expect(approve).to_be_visible()

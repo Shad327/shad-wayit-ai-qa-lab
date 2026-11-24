@@ -52,7 +52,7 @@ def test_demo_shows_case_evidence_and_refresh(page, isolated_review_api, tmp_pat
     source_image = Path(__file__).resolve().parents[1] / 'public/demo/generated-result.png'
     copyfile(source_image, image_folder / 'test-failed-1.png')
     serve_demo_reports(page, isolated_review_api, tmp_path)
-    page.goto("http://localhost:5173/#results")
+    page.goto("http://localhost:5173/?lab#results")
     demo = page.get_by_role("region", name="NoiseLabz quality demo")
     expect(demo).to_be_visible()
     expect(demo.get_by_label("Latest NoiseLabz run")).to_be_visible()
@@ -80,7 +80,7 @@ def test_demo_shows_case_evidence_and_refresh(page, isolated_review_api, tmp_pat
 
 def test_demo_shows_empty_results_without_saved_reports(page, isolated_review_api, tmp_path):
     serve_demo_reports(page, isolated_review_api, tmp_path)
-    page.goto('http://localhost:5173/#results')
+    page.goto('http://localhost:5173/?lab#results')
     demo = page.get_by_role('region', name='NoiseLabz quality demo')
     expect(demo.get_by_text(
         'No NoiseLabz report yet. Run the suite below to create one.', exact=True,
